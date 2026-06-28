@@ -1,58 +1,109 @@
 import { useState, useEffect } from 'react';
-import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { Statusbar } from './components/Statusbar';
-import { Inspector } from './components/Inspector';
-import { DiffViewer } from './components/DiffViewer';
 import { SearchModal } from './components/SearchModal';
 import { CommandPalette } from './components/CommandPalette';
-import { HomeWorkspace } from './components/HomeWorkspace';
-import { AnalyzeWorkspace } from './components/AnalyzeWorkspace';
+import { DirectoryExplorer } from './components/DirectoryExplorer';
+import { BottomDrawer } from './components/BottomDrawer';
+import { PluginMarketplace } from './components/PluginMarketplace';
+import { SettingsWorkspace } from './components/SettingsWorkspace';
 import { MockClient } from './services/mockClient';
 import { QtBridgeClient } from './services/qtBridgeClient';
-import type { InspectorObject } from './components/Inspector';
-import type {
-  Project,
-  Issue,
-  ScanStartedEvent,
-  IssueFoundEvent,
-  ScanCompletedEvent,
-  ClientApi,
-} from './services/clientApi';
-import { FileCode, Folder, ToggleLeft, ToggleRight } from 'lucide-react';
+import type { Project, Issue, ClientApi } from './services/clientApi';
+import {
+  Sparkles,
+  ToggleLeft,
+  ToggleRight,
+  Play,
+  Square,
+  Terminal,
+  FileCode,
+  CheckCircle,
+  AlertTriangle,
+  Shield,
+  Settings,
+  HelpCircle,
+  Activity,
+  Box,
+  History,
+  Check,
+  AlertCircle,
+} from 'lucide-react';
+import type { PluginCard } from './components/PluginMarketplace';
 
 const isQt = typeof window.qt !== 'undefined';
 export const client: ClientApi = isQt ? new QtBridgeClient() : new MockClient();
 
-const workspaceTitles: { [key: string]: string } = {
-  home: 'Home Dashboard',
-  codebase: 'Codebase Workspace',
-  analyze: 'Issues Queue',
-  improve: 'Improvement Workspace',
-  insights: 'Quality Insights',
-  extensions: 'Extension Manager',
-  settings: 'Configuration Settings',
-};
-
 function App() {
-  const [activeWorkspace, setActiveWorkspace] = useState('home');
+  // Navigation & Workspace State
+  const [activeWorkspace, setActiveWorkspace] = useState('queue');
+  const [scope, setScope] = useState('entire');
+  const [selectedFile, setSelectedFile] = useState('IpcServer.cpp');
+  const [bottomTab, setBottomTab] = useState<'code' | 'diff' | 'logs' | 'rules' | 'git'>('code');
+  const [isInvestigating, setIsInvestigating] = useState(false);
+
+  // Panel toggles
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState(false);
+  const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
+
+  // Core Data States
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState('');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
-  const [isInvestigating, setIsInvestigating] = useState(false);
 
-  // Shell Layout and Dialog States
-  const [inspectorObject, setInspectorObject] = useState<InspectorObject | null>(null);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Layout Dialogs
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [lastScanTime, setLastScanTime] = useState('Just now');
+  const [ignoredIssues, setIgnoredIssues] = useState<Record<string, string>>({});
+  const [showIgnoreModal, setShowIgnoreModal] = useState<string | null>(null);
+  const [ignoreReason, setIgnoreReason] = useState('');
 
-  // Scanning state
+  // Scanning Progress States
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+
+  // Investigation Specific Sub-states
+  const [activePanel, setActivePanel] = useState<
+    | 'summary'
+    | 'why'
+    | 'call_flow'
+    | 'ownership'
+    | 'related'
+    | 'git'
+    | 'reasoning'
+    | 'docs'
+    | 'discussion'
+  >('summary');
+  const [comments, setComments] = useState<string[]>([
+    'Sanket: Verified this conforms to SQLite parameterized bindings rules.',
+  ]);
+  const [newComment, setNewComment] = useState('');
+  const [selectedCallNode, setSelectedCallNode] = useState<string>('handleQuery');
+
+  // Marketplace & Settings specific states
+  const [selectedPluginId, setSelectedPluginId] = useState('plugin-sql-injection');
+  const [selectedPlugin, setSelectedPlugin] = useState<PluginCard>({
+    id: 'plugin-sql-injection',
+    name: 'SQL Injection Guard',
+    category: 'Security Auditing',
+    version: '1.4.2',
+    author: 'Sentinel Security Team',
+    downloads: '1.2K',
+    rating: 4.9,
+    description:
+      'Advanced AST matchers analyzing query parameters to detect raw sqlite3 concatenations and dynamic formatting vulnerabilities.',
+    installed: true,
+    enabled: true,
+  });
+  const [settingsCategory, setSettingsCategory] = useState('general');
+  const [settingsAuditLogs] = useState<string[]>([
+    '[INFO] Workspace profile set to: Default (Security & Style)',
+    '[INFO] Enforce Docker Sandbox mode enabled.',
+  ]);
 
   // Load projects initially
   useEffect(() => {
@@ -61,11 +112,19 @@ function App() {
       setProjects(projs);
       if (projs.length > 0) {
         setActiveProjectId(projs[0].id);
-        setInspectorObject({ type: 'project', data: projs[0] });
       }
     }
     load();
   }, []);
+
+  // Auto-collapse right panel for utility workspaces
+  useEffect(() => {
+    if (activeWorkspace !== 'queue' && activeWorkspace !== 'repository') {
+      setIsRightCollapsed(true);
+    } else {
+      setIsRightCollapsed(false);
+    }
+  }, [activeWorkspace]);
 
   // Reload issues when active project changes
   useEffect(() => {
@@ -75,15 +134,8 @@ function App() {
       setIssues(list);
       if (list.length > 0) {
         setSelectedIssueId(list[0].id);
-        setInspectorObject({ type: 'issue', data: list[0] });
       } else {
         setSelectedIssueId(null);
-        const activeProj = projects.find((p) => p.id === activeProjectId);
-        if (activeProj) {
-          setInspectorObject({ type: 'project', data: activeProj });
-        } else {
-          setInspectorObject(null);
-        }
       }
     }
     loadIssues();
@@ -97,41 +149,6 @@ function App() {
       document.documentElement.classList.remove('light-theme');
     }
   }, [theme]);
-
-  // Automatically select default inspector context when active workspace changes
-  useEffect(() => {
-    if (activeWorkspace !== 'analyze') {
-      setIsInvestigating(false);
-    }
-    if (activeWorkspace === 'home') {
-      setInspectorObject({ type: 'home_context', data: {} });
-    } else if (activeWorkspace === 'codebase') {
-      const activeProj = projects.find((p) => p.id === activeProjectId);
-      if (activeProj) {
-        setInspectorObject({ type: 'project', data: activeProj });
-      }
-    } else if (activeWorkspace === 'analyze') {
-      const iss = issues.find((i) => i.id === selectedIssueId) || issues[0];
-      if (iss) {
-        setSelectedIssueId(iss.id);
-        setInspectorObject({ type: 'issue', data: iss });
-      }
-    } else if (activeWorkspace === 'extensions') {
-      setInspectorObject({
-        type: 'plugin',
-        data: {
-          name: 'cppcheck',
-          version: '2.13',
-          description:
-            'Static analysis tool for C/C++ code. Detects bugs, memory leaks, and undefined behavior.',
-          status: 'Active',
-          category: 'Static Analyzer',
-        },
-      });
-    } else {
-      setInspectorObject(null);
-    }
-  }, [activeWorkspace, projects, activeProjectId]);
 
   // Elapsed scan time ticker
   useEffect(() => {
@@ -148,12 +165,17 @@ function App() {
     return () => clearInterval(timer);
   }, [isScanning]);
 
+  // Auto transition to running screen when scan starts, and back to queue on completion
+  useEffect(() => {
+    if (isScanning) {
+      setActiveWorkspace('running');
+    } else if (activeWorkspace === 'running') {
+      setActiveWorkspace('queue');
+    }
+  }, [isScanning]);
+
   const handleProjectChange = (id: string) => {
     setActiveProjectId(id);
-    const proj = projects.find((p) => p.id === id);
-    if (proj) {
-      setInspectorObject({ type: 'project', data: proj });
-    }
   };
 
   const handleRunScan = async () => {
@@ -161,53 +183,38 @@ function App() {
     setIsScanning(true);
     setScanProgress(0);
 
-    await client.RunScan(
-      activeProjectId,
-      (
-        event:
-          | ScanStartedEvent
-          | IssueFoundEvent
-          | ScanCompletedEvent
-          | { type: 'progress'; progress: number },
-      ) => {
-        if (event.type === 'progress') {
-          setScanProgress(event.progress);
-        } else if (event.type === 'ScanCompleted') {
-          setIsScanning(false);
-          setScanProgress(100);
-          // Refresh project data and issues list
-          client.GetProjects().then((updatedProjs) => {
-            setProjects(updatedProjs);
-            const activeProj = updatedProjs.find((p) => p.id === activeProjectId);
-            if (activeProj) {
-              setInspectorObject({ type: 'project', data: activeProj });
-            }
-          });
-          client.GetIssues(activeProjectId).then((list) => {
-            setIssues(list);
-            if (list.length > 0 && !selectedIssueId) {
-              setSelectedIssueId(list[list.length - 1].id);
-              setInspectorObject({ type: 'issue', data: list[list.length - 1] });
-            }
-          });
-        }
-      },
-    );
+    await client.RunScan(activeProjectId, (event) => {
+      if (event.type === 'progress') {
+        setScanProgress(event.progress);
+      } else if (event.type === 'ScanCompleted') {
+        setIsScanning(false);
+        setScanProgress(100);
+        client.GetProjects().then((updatedProjs) => {
+          setProjects(updatedProjs);
+        });
+        client.GetIssues(activeProjectId).then((list) => {
+          setIssues(list);
+          if (list.length > 0 && !selectedIssueId) {
+            setSelectedIssueId(list[list.length - 1].id);
+          }
+        });
+      }
+    });
+  };
+
+  const handleStopScan = () => {
+    setIsScanning(false);
+    setScanProgress(0);
   };
 
   const handleApplyFix = async (issueId: string) => {
     try {
       const success = await client.ApplyAutofix(issueId);
       if (success) {
-        // Refresh project and issues state
         const updatedProjs = await client.GetProjects();
         setProjects(updatedProjs);
         const updatedIssues = await client.GetIssues(activeProjectId);
         setIssues(updatedIssues);
-        const currentIssue = updatedIssues.find((i) => i.id === issueId);
-        if (currentIssue) {
-          setInspectorObject({ type: 'issue', data: currentIssue });
-        }
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -229,6 +236,15 @@ function App() {
   // Keyboard Shortcuts Handler
   useEffect(() => {
     const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const isInput =
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        document.activeElement?.tagName === 'SELECT';
+
+      if (isInput && !e.ctrlKey && e.key !== 'Escape') {
+        return;
+      }
+
       // Ctrl+K -> Search Modal
       if (e.ctrlKey && e.key === 'k') {
         e.preventDefault();
@@ -244,887 +260,1776 @@ function App() {
         e.preventDefault();
         handleRunScan();
       }
-      // Ctrl+F -> Search/Filter Focus
-      else if (e.ctrlKey && e.key === 'f') {
+      // Ctrl+[ -> Toggle Left Panel
+      else if (e.ctrlKey && e.key === '[') {
         e.preventDefault();
-        // Shift workspace to Analyze & focus filter query
-        setActiveWorkspace('analyze');
-        const filterInput = document.getElementById('local-search-input');
-        if (filterInput) {
-          filterInput.focus();
-        }
+        setIsLeftCollapsed((prev) => !prev);
       }
-      // Esc -> Close search, palette, or inspector
+      // Ctrl+] -> Toggle Right Panel
+      else if (e.ctrlKey && e.key === ']') {
+        e.preventDefault();
+        setIsRightCollapsed((prev) => !prev);
+      }
+      // Ctrl+` -> Toggle Bottom Panel
+      else if (e.ctrlKey && e.key === '`') {
+        e.preventDefault();
+        setIsBottomCollapsed((prev) => !prev);
+      }
+      // Esc -> Close modals or exit investigation mode
       else if (e.key === 'Escape') {
         if (isSearchOpen) {
           setIsSearchOpen(false);
         } else if (isPaletteOpen) {
           setIsPaletteOpen(false);
-        } else {
-          setInspectorObject(null);
+        } else if (isInvestigating) {
+          setIsInvestigating(false);
         }
       }
     };
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [activeProjectId, isSearchOpen, isPaletteOpen]);
+  }, [activeProjectId, isSearchOpen, isPaletteOpen, isInvestigating]);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
   const selectedIssue = issues.find((i) => i.id === selectedIssueId) || null;
 
-  // Render sub-workspaces
-  const renderWorkspaceContent = () => {
-    if (!activeProject) {
-      return (
-        <div style={{ color: 'var(--sds-text-muted)', textAlign: 'center', marginTop: '100px' }}>
-          Loading active project workspace...
-        </div>
-      );
+  // Sync selected file context with selected issue location
+  useEffect(() => {
+    if (selectedIssue) {
+      setSelectedFile(selectedIssue.location.fileId);
     }
+  }, [selectedIssueId]);
 
-    switch (activeWorkspace) {
-      case 'home': {
-        return (
-          <HomeWorkspace
-            activeProject={activeProject}
-            projects={projects}
-            issues={issues}
-            isScanning={isScanning}
-            onRunScan={handleRunScan}
-            setActiveWorkspace={setActiveWorkspace}
-            setInspectorObject={setInspectorObject}
-            onProjectChange={handleProjectChange}
-            setSelectedIssueId={setSelectedIssueId}
-            setIsInvestigating={setIsInvestigating}
-          />
-        );
-      }
+  // Handle ignore issue submission
+  const handleIgnoreSubmit = () => {
+    if (showIgnoreModal) {
+      setIgnoredIssues((prev) => ({
+        ...prev,
+        [showIgnoreModal]: ignoreReason || 'Manually deferred',
+      }));
+      setShowIgnoreModal(null);
+      setIgnoreReason('');
+    }
+  };
 
-      case 'codebase':
-        return (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '260px 1fr',
-              gap: 'var(--sds-space-24)',
-              flex: 1,
-            }}
-          >
-            {/* Folder Tree Panel */}
-            <div className="sds-card" style={{ padding: 'var(--sds-space-16)' }}>
-              <h3 style={{ fontSize: '14px', marginBottom: 'var(--sds-space-12)' }}>
-                Folder Structure
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-8)' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text-heading)',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'folder',
-                      data: { name: 'core', path: 'core/', subdirsCount: 2, filesCount: 4 },
-                    })
-                  }
-                >
-                  <Folder size={14} color="var(--sds-primary)" />
-                  <span>core/</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text)',
-                    marginLeft: '16px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'folder',
-                      data: {
-                        name: 'event_bus',
-                        path: 'core/event_bus/',
-                        subdirsCount: 0,
-                        filesCount: 2,
-                      },
-                    })
-                  }
-                >
-                  <Folder size={14} color="var(--sds-primary)" />
-                  <span>event_bus/</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text)',
-                    marginLeft: '16px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'folder',
-                      data: {
-                        name: 'fake_data',
-                        path: 'core/fake_data/',
-                        subdirsCount: 0,
-                        filesCount: 2,
-                      },
-                    })
-                  }
-                >
-                  <Folder size={14} color="var(--sds-primary)" />
-                  <span>fake_data/</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text)',
-                    marginLeft: '32px',
-                    fontFamily: 'var(--sds-font-mono)',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'file',
-                      data: {
-                        name: 'FakeClientApi.cpp',
-                        path: 'core/fake_data/FakeClientApi.cpp',
-                        issuesCount: 1,
-                        loc: 145,
-                      },
-                    })
-                  }
-                >
-                  <FileCode size={12} color="var(--sds-text-muted)" />
-                  <span>FakeClientApi.cpp</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text-heading)',
-                    fontWeight: 500,
-                    marginTop: '4px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'folder',
-                      data: { name: 'apps', path: 'apps/', subdirsCount: 1, filesCount: 1 },
-                    })
-                  }
-                >
-                  <Folder size={14} color="var(--sds-primary)" />
-                  <span>apps/</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text)',
-                    marginLeft: '16px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'folder',
-                      data: {
-                        name: 'desktop',
-                        path: 'apps/desktop/',
-                        subdirsCount: 1,
-                        filesCount: 3,
-                      },
-                    })
-                  }
-                >
-                  <Folder size={14} color="var(--sds-primary)" />
-                  <span>desktop/</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text)',
-                    marginLeft: '32px',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'folder',
-                      data: {
-                        name: 'ui',
-                        path: 'ui/',
-                        subdirsCount: 2,
-                        filesCount: 8,
-                      },
-                    })
-                  }
-                >
-                  <Folder size={14} color="var(--sds-primary)" />
-                  <span>ui/</span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '13px',
-                    color: 'var(--sds-text)',
-                    marginLeft: '48px',
-                    fontFamily: 'var(--sds-font-mono)',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() =>
-                    setInspectorObject({
-                      type: 'file',
-                      data: {
-                        name: 'App.tsx',
-                        path: 'ui/src/App.tsx',
-                        issuesCount: 0,
-                        loc: 1143,
-                      },
-                    })
-                  }
-                >
-                  <FileCode size={12} color="var(--sds-primary)" />
-                  <span>App.tsx</span>
-                </div>
-              </div>
-            </div>
+  // Helper getters for ratings/confidence
+  const getConfidenceLevel = (iss: Issue) => {
+    if (iss.confidence === 'High') return { score: 98, color: 'var(--sds-success)' };
+    if (iss.confidence === 'Medium') return { score: 75, color: 'var(--sds-warning)' };
+    return { score: 45, color: 'var(--sds-text-muted)' };
+  };
 
-            {/* Codebase Dependency Graph Card */}
-            <div
-              className="sds-card"
-              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-            >
-              <h3>Architecture Map</h3>
-              <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)' }}>
-                Visual graph showing the core modules dependencies and link weights.
-              </p>
-              {/* Graphical SVG Schema */}
-              <div
+  // ----------------------------------------------------
+  // SUB-PANEL RENDERING METHODS
+  // ----------------------------------------------------
+
+  // Left Panel Dynamic Content
+  const renderLeftPanelContent = () => {
+    const navItems = [
+      { id: 'queue', label: 'Work Queue', icon: '⚡' },
+      { id: 'repository', label: 'Repository', icon: '📁' },
+      { id: 'packs', label: 'Rule Packs', icon: '📋' },
+      { id: 'history', label: 'History', icon: '🕒' },
+      { id: 'settings', label: 'Settings', icon: '⚙' },
+    ];
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+        {/* Navigation Options */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {navItems.map((item) => {
+            const isSelected =
+              activeWorkspace === item.id || (item.id === 'queue' && activeWorkspace === 'running');
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveWorkspace(item.id);
+                  if (item.id !== 'queue') {
+                    setIsInvestigating(false);
+                  }
+                }}
                 style={{
-                  flex: 1,
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  border: '1px dashed var(--sds-border)',
+                  gap: '10px',
+                  width: '100%',
+                  padding: '8px 12px',
                   borderRadius: 'var(--sds-radius-md)',
-                  position: 'relative',
+                  border: 'none',
+                  backgroundColor: isSelected ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  color: isSelected ? 'var(--sds-text-heading)' : 'var(--sds-text)',
+                  fontWeight: isSelected ? 600 : 500,
+                  fontSize: '13px',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  transition: 'all var(--sds-transition-fast)',
                 }}
               >
-                <svg width="400" height="240" viewBox="0 0 400 240">
-                  {/* Edges */}
-                  <line
-                    x1="80"
-                    y1="120"
-                    x2="200"
-                    y2="60"
-                    stroke="var(--sds-border-hover)"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1="80"
-                    y1="120"
-                    x2="200"
-                    y2="180"
-                    stroke="var(--sds-border-hover)"
-                    strokeWidth="2"
-                  />
-                  <line
-                    x1="200"
-                    y1="60"
-                    x2="320"
-                    y2="120"
-                    stroke="var(--sds-primary)"
-                    strokeWidth="3"
-                  />
-                  <line
-                    x1="200"
-                    y1="180"
-                    x2="320"
-                    y2="120"
-                    stroke="var(--sds-border-hover)"
-                    strokeWidth="2"
-                  />
-                  {/* Nodes */}
-                  <circle
-                    cx="80"
-                    cy="120"
-                    r="24"
-                    fill="var(--sds-surface-hover)"
-                    stroke="var(--sds-border)"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x="80"
-                    y="124"
-                    fill="var(--sds-text)"
-                    fontSize="9"
-                    textAnchor="middle"
-                    fontFamily="var(--sds-font-mono)"
-                  >
-                    CLI/App
-                  </text>
-
-                  <circle
-                    cx="200"
-                    cy="60"
-                    r="28"
-                    fill="var(--sds-surface-active)"
-                    stroke="var(--sds-primary)"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x="200"
-                    y="64"
-                    fill="var(--sds-text-heading)"
-                    fontSize="9"
-                    textAnchor="middle"
-                    fontFamily="var(--sds-font-mono)"
-                  >
-                    EventBus
-                  </text>
-
-                  <circle
-                    cx="200"
-                    cy="180"
-                    r="28"
-                    fill="var(--sds-surface-hover)"
-                    stroke="var(--sds-border)"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x="200"
-                    y="184"
-                    fill="var(--sds-text)"
-                    fontSize="9"
-                    textAnchor="middle"
-                    fontFamily="var(--sds-font-mono)"
-                  >
-                    FakeAPI
-                  </text>
-
-                  <circle
-                    cx="320"
-                    cy="120"
-                    r="32"
-                    fill="var(--sds-primary)"
-                    stroke="var(--sds-primary-hover)"
-                    strokeWidth="2"
-                  />
-                  <text
-                    x="320"
-                    y="124"
-                    fill="#fff"
-                    fontSize="10"
-                    fontWeight="600"
-                    textAnchor="middle"
-                    fontFamily="var(--sds-font-mono)"
-                  >
-                    CoreEngine
-                  </text>
-                </svg>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'analyze': {
-        return (
-          <AnalyzeWorkspace
-            activeProject={activeProject}
-            issues={issues}
-            selectedIssueId={selectedIssueId}
-            setSelectedIssueId={setSelectedIssueId}
-            setInspectorObject={setInspectorObject}
-            onApplyFix={handleApplyFix}
-            isScanning={isScanning}
-            onRunScan={handleRunScan}
-            setActiveWorkspace={setActiveWorkspace}
-            isInvestigating={isInvestigating}
-            setIsInvestigating={setIsInvestigating}
-          />
-        );
-      }
-
-      case 'improve':
-        if (!selectedIssue || !selectedIssue.fix) {
-          return (
-            <div
-              className="sds-card"
-              style={{ textAlign: 'center', padding: 'var(--sds-space-64)' }}
-            >
-              <h3>No improvement selected</h3>
-              <p style={{ color: 'var(--sds-text-muted)', marginTop: 'var(--sds-space-8)' }}>
-                Select an issue with an available improvement in the Analyze page first.
-              </p>
-              <button
-                onClick={() => setActiveWorkspace('analyze')}
-                className="sds-btn sds-btn-primary"
-                style={{ marginTop: 'var(--sds-space-16)' }}
-              >
-                Go to Issues Queue
+                <span style={{ fontSize: '14px' }}>{item.icon}</span>
+                <span>{item.label}</span>
               </button>
-            </div>
-          );
-        }
+            );
+          })}
+        </div>
 
-        return (
-          <div
+        <div style={{ height: '1px', backgroundColor: 'var(--sds-border)' }} />
+
+        {/* Repository Tree */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            flex: 1,
+            overflow: 'hidden',
+          }}
+        >
+          <span
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-16)',
-              flex: 1,
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--sds-text-muted)',
+              letterSpacing: '0.5px',
+              paddingLeft: '8px',
             }}
           >
-            <div>
-              <h3>Improvement Workspace</h3>
-              <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)' }}>
-                Verify and apply automated diff changes to files under the Docker container
-                workspace.
-              </p>
-            </div>
-            <DiffViewer
-              previewText={selectedIssue.fix.actions[0]?.preview || ''}
-              status={selectedIssue.status}
-              onApply={async () => {
-                await handleApplyFix(selectedIssue.id);
+            REPOSITORY
+          </span>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            <DirectoryExplorer
+              selectedFile={selectedFile}
+              onFileSelect={(path) => {
+                setSelectedFile(path);
+                const related = issues.find(
+                  (i) => i.location.fileId === path || i.location.fileId.endsWith(path),
+                );
+                if (related) {
+                  setSelectedIssueId(related.id);
+                  setIsInvestigating(true);
+                  setActiveWorkspace('queue');
+                } else {
+                  setActiveWorkspace('repository');
+                }
               }}
-              onCancel={() => setActiveWorkspace('analyze')}
+              issues={issues.map((i) => ({ fileId: i.location.fileId, severity: i.severity }))}
             />
           </div>
-        );
+        </div>
+      </div>
+    );
+  };
 
-      case 'insights':
+  // Center Panel Content
+  const renderCenterPanelContent = () => {
+    if (activeWorkspace === 'queue') {
+      if (isInvestigating) {
+        // Deep Dive editor workspace
         return (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-24)',
-              flex: 1,
-            }}
-          >
-            <h3>Quality Trend Analytics</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => setIsInvestigating(false)}
+                  className="sds-btn sds-btn-secondary"
+                  style={{ padding: '4px 10px', fontSize: '11.5px' }}
+                >
+                  ← Back to Work Queue
+                </button>
+                <div
+                  style={{ width: '1px', height: '14px', backgroundColor: 'var(--sds-border)' }}
+                />
+                <span
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    fontFamily: 'var(--sds-font-mono)',
+                    color: 'var(--sds-text-heading)',
+                  }}
+                >
+                  {selectedFile}
+                </span>
+              </div>
+              {selectedIssue && (
+                <span className="sds-badge sds-badge-danger" style={{ fontSize: '10px' }}>
+                  {selectedIssue.severity} Warning
+                </span>
+              )}
+            </div>
+
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1.5fr 1fr',
-                gap: 'var(--sds-space-24)',
+                flex: 1,
+                border: '1px solid var(--sds-border)',
+                borderRadius: 'var(--sds-radius-lg)',
+                overflow: 'hidden',
+                backgroundColor: '#07080b',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
-              {/* Quality Trend Line Graph */}
-              <div
-                className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-              >
-                <h4>Quality History Score</h4>
-                <div
-                  style={{
-                    height: '200px',
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    paddingBottom: '20px',
-                    position: 'relative',
-                    borderLeft: '1px solid var(--sds-border)',
-                    borderBottom: '1px solid var(--sds-border)',
-                  }}
-                >
-                  {/* SVG Line representation of Quality trend */}
-                  <svg
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                  >
-                    <path
-                      d="M 50 150 L 150 120 L 250 80 L 350 40"
-                      fill="none"
-                      stroke="var(--sds-primary)"
-                      strokeWidth="3"
-                    />
-                    {/* Points */}
-                    <circle cx="50" cy="150" r="5" fill="var(--sds-primary)" />
-                    <circle cx="150" cy="120" r="5" fill="var(--sds-primary)" />
-                    <circle cx="250" cy="80" r="5" fill="var(--sds-primary)" />
-                    <circle cx="350" cy="40" r="5" fill="var(--sds-primary)" />
-                  </svg>
-                  {/* Axis labels */}
-                  <div
-                    style={{ position: 'absolute', bottom: '0px', left: '40px', fontSize: '10px' }}
-                  >
-                    Commit-a1
-                  </div>
-                  <div
-                    style={{ position: 'absolute', bottom: '0px', left: '140px', fontSize: '10px' }}
-                  >
-                    Commit-b2
-                  </div>
-                  <div
-                    style={{ position: 'absolute', bottom: '0px', left: '240px', fontSize: '10px' }}
-                  >
-                    Commit-c3
-                  </div>
-                  <div
-                    style={{ position: 'absolute', bottom: '0px', left: '340px', fontSize: '10px' }}
-                  >
-                    Latest Scan
-                  </div>
-                </div>
-              </div>
-
-              {/* Issues by categories */}
-              <div
-                className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-              >
-                <h4>Issue Distributions</h4>
-                <div
-                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '12px',
-                        marginBottom: '4px',
-                      }}
-                    >
-                      <span>Security</span>
-                      <span>{issues.filter((i) => i.category === 'Security').length} items</span>
-                    </div>
-                    <div
-                      style={{
-                        height: '8px',
-                        backgroundColor: 'var(--sds-border)',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: issues.some((i) => i.category === 'Security') ? '60%' : '0%',
-                          height: '100%',
-                          backgroundColor: 'var(--sds-danger)',
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        fontSize: '12px',
-                        marginBottom: '4px',
-                      }}
-                    >
-                      <span>Style Conformance</span>
-                      <span>{issues.filter((i) => i.category === 'Style').length} items</span>
-                    </div>
-                    <div
-                      style={{
-                        height: '8px',
-                        backgroundColor: 'var(--sds-border)',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '80%',
-                          height: '100%',
-                          backgroundColor: 'var(--sds-warning)',
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'extensions':
-        return (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-24)',
-              flex: 1,
-            }}
-          >
-            <h3>Installed Extensions & Analyzers</h3>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 'var(--sds-space-16)',
-              }}
-            >
-              {/* Plugin 1: Cppcheck */}
-              <div
-                className="sds-card"
-                onClick={() =>
-                  setInspectorObject({
-                    type: 'plugin',
-                    data: {
-                      name: 'cppcheck',
-                      version: '2.13',
-                      description:
-                        'Static analysis tool for C/C++ code. Detects bugs, memory leaks, and undefined behavior.',
-                      status: 'Active',
-                      category: 'Static Analyzer',
-                    },
-                  })
-                }
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--sds-space-12)',
-                  cursor: 'pointer',
-                }}
-              >
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <h4 style={{ fontSize: '15px' }}>cppcheck</h4>
-                  <ToggleRight size={24} color="var(--sds-success)" style={{ cursor: 'pointer' }} />
-                </div>
-                <p style={{ fontSize: '12px', color: 'var(--sds-text-muted)', lineHeight: '1.4' }}>
-                  Static analysis tool for C/C++ code. Detects bugs, memory leaks, and undefined
-                  behavior.
-                </p>
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--sds-primary)',
-                    fontWeight: 500,
-                    marginTop: 'auto',
-                  }}
-                >
-                  Version 2.13 (Active)
-                </div>
-              </div>
-
-              {/* Plugin 2: Clang-Tidy */}
-              <div
-                className="sds-card"
-                onClick={() =>
-                  setInspectorObject({
-                    type: 'plugin',
-                    data: {
-                      name: 'clang-tidy',
-                      version: '17.0',
-                      description:
-                        'LLVM-based C++ linter tool providing diagnosis and automated corrections for style, performance, and API misuse.',
-                      status: 'Active',
-                      category: 'LLVM Compiler Linter',
-                    },
-                  })
-                }
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--sds-space-12)',
-                  cursor: 'pointer',
-                }}
-              >
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <h4 style={{ fontSize: '15px' }}>clang-tidy</h4>
-                  <ToggleRight size={24} color="var(--sds-success)" style={{ cursor: 'pointer' }} />
-                </div>
-                <p style={{ fontSize: '12px', color: 'var(--sds-text-muted)', lineHeight: '1.4' }}>
-                  LLVM-based C++ linter tool providing diagnosis and automated corrections for
-                  style, performance, and API misuse.
-                </p>
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--sds-primary)',
-                    fontWeight: 500,
-                    marginTop: 'auto',
-                  }}
-                >
-                  Version 17.0 (Active)
-                </div>
-              </div>
-
-              {/* Plugin 3: ESLint */}
-              <div
-                className="sds-card"
-                onClick={() =>
-                  setInspectorObject({
-                    type: 'plugin',
-                    data: {
-                      name: 'eslint-plugin',
-                      version: '8.56',
-                      description:
-                        'Pluggable JavaScript/TypeScript linter finding patterns and bugs in Node/React codebases.',
-                      status: 'Active',
-                      category: 'JS/TS Linter',
-                    },
-                  })
-                }
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--sds-space-12)',
-                  cursor: 'pointer',
-                }}
-              >
-                <div
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                >
-                  <h4 style={{ fontSize: '15px' }}>eslint-plugin</h4>
-                  <ToggleRight size={24} color="var(--sds-success)" style={{ cursor: 'pointer' }} />
-                </div>
-                <p style={{ fontSize: '12px', color: 'var(--sds-text-muted)', lineHeight: '1.4' }}>
-                  Pluggable JavaScript/TypeScript linter finding patterns and bugs in Node/React
-                  codebases.
-                </p>
-                <div
-                  style={{
-                    fontSize: '11px',
-                    color: 'var(--sds-primary)',
-                    fontWeight: 500,
-                    marginTop: 'auto',
-                  }}
-                >
-                  Version 8.56 (Active)
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'settings':
-        return (
-          <div
-            className="sds-card"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-24)',
-              maxWidth: '500px',
-            }}
-          >
-            <h3>Global Configuration Profile</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}>
-              <div>
-                <label
-                  style={{
-                    display: 'block',
-                    fontSize: '12px',
-                    color: 'var(--sds-text-muted)',
-                    marginBottom: '4px',
-                  }}
-                >
-                  Active Profile
-                </label>
-                <select
-                  style={{
-                    width: '100%',
-                    backgroundColor: 'var(--sds-bg)',
-                    border: '1px solid var(--sds-border)',
-                    borderRadius: 'var(--sds-radius-md)',
-                    padding: '8px',
-                    color: '#fff',
-                  }}
-                >
-                  <option>Default (Security & Style)</option>
-                  <option>Strict (Compile Warnings & All checks)</option>
-                </select>
-              </div>
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  borderTop: '1px solid var(--sds-border)',
-                  paddingTop: 'var(--sds-space-16)',
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(0,0,0,0.15)',
+                  borderBottom: '1px solid var(--sds-border)',
                 }}
               >
-                <div>
-                  <span style={{ fontSize: '13px', color: 'var(--sds-text-heading)' }}>
-                    Auto-scan on save
-                  </span>
-                  <p style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
-                    Automatically trigger scan when modifying workspace files
-                  </p>
-                </div>
-                <ToggleLeft size={24} style={{ cursor: 'pointer' }} />
+                <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                  Interactive Inspector Workspace
+                </span>
+                <span className="sds-badge sds-badge-info" style={{ fontSize: '9px' }}>
+                  C++ Sandbox Container
+                </span>
+              </div>
+              <div
+                style={{
+                  flex: 1,
+                  overflow: 'auto',
+                  padding: '16px',
+                  fontFamily: 'var(--sds-font-mono)',
+                  fontSize: '12.5px',
+                  lineHeight: '1.6',
+                }}
+              >
+                {selectedFile === 'IpcServer.cpp' ? (
+                  <>
+                    <div>#include "IpcServer.h"</div>
+                    <div>#include &lt;sqlite3.h&gt;</div>
+                    <div>#include &lt;string&gt;</div>
+                    <div></div>
+                    <div>void IpcServer::handleQuery(const std::string& input_val) &#123;</div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                        borderLeft: '3px solid var(--sds-danger)',
+                        paddingLeft: '8px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: 'var(--sds-danger)',
+                          marginRight: '16px',
+                          width: '20px',
+                          textAlign: 'right',
+                        }}
+                      >
+                        42
+                      </span>
+                      <span style={{ color: '#ffb3b3' }}>
+                        std::string sql = "SELECT * FROM users WHERE name = '" + input_val + "';";
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: '16px',
+                          color: 'var(--sds-danger)',
+                          fontStyle: 'italic',
+                          fontSize: '11px',
+                        }}
+                      >
+                        ⚠️ SQL Injection warning
+                      </span>
+                    </div>
+                    <div> sqlite3_stmt* stmt;</div>
+                    <div> int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);</div>
+                    <div> if (rc == SQLITE_OK) &#123;</div>
+                    <div> sqlite3_step(stmt);</div>
+                    <div> &#125;</div>
+                    <div> sqlite3_finalize(stmt);</div>
+                    <div>&#125;</div>
+                  </>
+                ) : selectedFile === 'JsonRpcHandler.cpp' ? (
+                  <>
+                    <div>#include "JsonRpcHandler.h"</div>
+                    <div>#include &lt;iostream&gt;</div>
+                    <div></div>
+                    <div>
+                      void JsonRpcHandler::processRequest(const std::string& method, const
+                      std::string& params) &#123;
+                    </div>
+                    <div>
+                      {' '}
+                      std::cout &lt;&lt; "Received Rpc method: " &lt;&lt; method &lt;&lt; std::endl;
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                        borderLeft: '3px solid var(--sds-warning)',
+                        paddingLeft: '8px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: 'var(--sds-warning)',
+                          marginRight: '16px',
+                          width: '20px',
+                          textAlign: 'right',
+                        }}
+                      >
+                        85
+                      </span>
+                      <span style={{ color: '#ffe4b3' }}>
+                        int tempCode = 5; // local unused variable warning
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: '16px',
+                          color: 'var(--sds-warning)',
+                          fontStyle: 'italic',
+                          fontSize: '11px',
+                        }}
+                      >
+                        ⚠️ Unused variable 'tempCode'
+                      </span>
+                    </div>
+                    <div> if (method == "ping") &#123;</div>
+                    <div> sendResponse("pong");</div>
+                    <div> &#125;</div>
+                    <div>&#125;</div>
+                  </>
+                ) : (
+                  <div>// Viewing file: {selectedFile}</div>
+                )}
               </div>
             </div>
           </div>
         );
+      }
 
-      default:
-        return null;
+      // Work Queue List View
+      const openIssues = issues.filter((i) => i.status === 'Open' && !ignoredIssues[i.id]);
+
+      if (openIssues.length === 0) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              minHeight: '340px',
+              textAlign: 'center',
+              gap: '16px',
+              padding: '40px',
+            }}
+          >
+            <div
+              style={{
+                width: '54px',
+                height: '54px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                color: 'var(--sds-success)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                fontWeight: 700,
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+              }}
+            >
+              ✓
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--sds-text-heading)' }}>
+                Repository Ready
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)' }}>
+                No blocking issues found.
+              </p>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                gap: '12px',
+                fontSize: '12px',
+                color: 'var(--sds-text-muted)',
+                margin: '6px 0',
+              }}
+            >
+              <span>42 rules checked</span>
+              <span>•</span>
+              <span>Last scan {lastScanTime}</span>
+            </div>
+            <button
+              onClick={() => handleRunScan()}
+              className="sds-btn sds-btn-primary"
+              style={{ padding: '6px 16px', fontSize: '12.5px', marginTop: '8px' }}
+            >
+              Run Scan Again
+            </button>
+          </div>
+        );
+      }
+
+      const criticalIssues = openIssues.filter(
+        (i) => i.severity === 'Critical' || i.severity === 'High',
+      );
+      const warningIssues = openIssues.filter(
+        (i) => i.severity !== 'Critical' && i.severity !== 'High',
+      );
+      const fixableCount = openIssues.filter((i) => i.fix).length;
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+              Today's Work Queue
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)', marginTop: '4px' }}>
+              Address outstanding items below to unblock commits on the active branch.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* Critical Blockers */}
+            {criticalIssues.map((item, idx) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  setSelectedIssueId(item.id);
+                  setIsInvestigating(true);
+                }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 18px',
+                  backgroundColor: 'var(--sds-surface)',
+                  border: '1px solid var(--sds-border)',
+                  borderRadius: 'var(--sds-radius-lg)',
+                  cursor: 'pointer',
+                  transition: 'all var(--sds-transition-fast)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--sds-border-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--sds-border)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ color: 'var(--sds-danger)', fontWeight: 700, fontSize: '14px' }}>
+                    🔴
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span
+                      style={{
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        color: 'var(--sds-text-heading)',
+                      }}
+                    >
+                      {item.title}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--sds-text-muted)',
+                        fontFamily: 'var(--sds-font-mono)',
+                      }}
+                    >
+                      {item.location.fileId}:L{item.location.line}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--sds-text-muted)',
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--sds-radius-pill)',
+                    }}
+                  >
+                    Estimated fix: {idx === 0 ? '2 min' : '3 min'}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedIssueId(item.id);
+                      setIsInvestigating(true);
+                    }}
+                    className="sds-btn sds-btn-ghost"
+                    style={{ fontSize: '11.5px', padding: '4px 8px' }}
+                  >
+                    Investigate →
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Safe Fixes Group block */}
+            {fixableCount > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 18px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.04)',
+                  border: '1px solid rgba(16, 185, 129, 0.15)',
+                  borderRadius: 'var(--sds-radius-lg)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ color: 'var(--sds-success)', fontWeight: 700, fontSize: '14px' }}>
+                    🟢
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span
+                      style={{
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        color: 'var(--sds-text-heading)',
+                      }}
+                    >
+                      Apply Safe Fixes
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                      Automatically fix {fixableCount} warnings conforming to sandbox standards.
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                    Estimated fix: 20 sec
+                  </span>
+                  <button
+                    onClick={() => handleApplySafeFixes()}
+                    className="sds-btn"
+                    style={{
+                      fontSize: '11.5px',
+                      padding: '5px 12px',
+                      backgroundColor: 'var(--sds-success)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 'var(--sds-radius-md)',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Apply Fixes
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Warnings */}
+            {warningIssues.map((item) => (
+              <div
+                key={item.id}
+                onClick={() => {
+                  setSelectedIssueId(item.id);
+                  setIsInvestigating(true);
+                }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 18px',
+                  backgroundColor: 'var(--sds-surface)',
+                  border: '1px solid var(--sds-border)',
+                  borderRadius: 'var(--sds-radius-lg)',
+                  cursor: 'pointer',
+                  transition: 'all var(--sds-transition-fast)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--sds-border-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--sds-border)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ color: 'var(--sds-warning)', fontWeight: 700, fontSize: '14px' }}>
+                    🟡
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span
+                      style={{
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        color: 'var(--sds-text-heading)',
+                      }}
+                    >
+                      {item.title}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--sds-text-muted)',
+                        fontFamily: 'var(--sds-font-mono)',
+                      }}
+                    >
+                      {item.location.fileId}:L{item.location.line}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--sds-text-muted)',
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--sds-radius-pill)',
+                    }}
+                  >
+                    Estimated fix: 30 sec
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedIssueId(item.id);
+                      setIsInvestigating(true);
+                    }}
+                    className="sds-btn sds-btn-ghost"
+                    style={{ fontSize: '11.5px', padding: '4px 8px' }}
+                  >
+                    Investigate →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
     }
+
+    if (activeWorkspace === 'repository') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+              Local Repository Changes
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)', marginTop: '4px' }}>
+              Compare workspace changes, inspect diffs, and review pre-commit status before
+              committing.
+            </p>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: 'var(--sds-surface)',
+              border: '1px solid var(--sds-border)',
+              borderRadius: 'var(--sds-radius-lg)',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                  CURRENT BRANCH
+                </span>
+                <span
+                  style={{ fontSize: '14px', fontWeight: 600, color: 'var(--sds-text-heading)' }}
+                >
+                  main
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => handleRunScan()}
+                  className="sds-btn sds-btn-primary"
+                  style={{ fontSize: '11px', padding: '6px 12px' }}
+                >
+                  Verify Changes
+                </button>
+              </div>
+            </div>
+
+            <div style={{ height: '1px', backgroundColor: 'var(--sds-border)' }} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--sds-text-muted)' }}>
+                MODIFIED FILES (3)
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  {
+                    file: 'core/storage/Database.cpp',
+                    type: 'staged',
+                    changes: '+24 -12',
+                    code: 'Database.cpp',
+                  },
+                  { file: 'ui/src/App.tsx', type: 'unstaged', changes: '+98 -42', code: 'App.tsx' },
+                  {
+                    file: 'tests/unit/test_fake_data.cpp',
+                    type: 'unstaged',
+                    changes: 'deleted',
+                    code: 'test_fake_data.cpp',
+                  },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      setSelectedFile(item.code);
+                      setBottomTab('git');
+                      setIsBottomCollapsed(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      border: '1px solid var(--sds-border)',
+                      borderRadius: 'var(--sds-radius-md)',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--sds-border-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--sds-border)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          fontWeight: 600,
+                          backgroundColor:
+                            item.type === 'staged'
+                              ? 'rgba(16,185,129,0.12)'
+                              : 'rgba(245,158,11,0.12)',
+                          color:
+                            item.type === 'staged' ? 'var(--sds-success)' : 'var(--sds-warning)',
+                          padding: '2px 6px',
+                          borderRadius: 'var(--sds-radius-sm)',
+                        }}
+                      >
+                        {item.type.toUpperCase()}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          color: 'var(--sds-text-heading)',
+                          fontFamily: 'var(--sds-font-mono)',
+                        }}
+                      >
+                        {item.file}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--sds-text-muted)',
+                        fontFamily: 'var(--sds-font-mono)',
+                      }}
+                    >
+                      {item.changes}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeWorkspace === 'packs') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+              Installed Rule Packs
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)', marginTop: '4px' }}>
+              Verify and configure static analysis standards enabled for pre-commit gates.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[
+              {
+                id: 'documentation',
+                label: 'Documentation Standards',
+                desc: 'Checks file headers, comment style, docstrings conformity.',
+                enabled: true,
+              },
+              {
+                id: 'misra',
+                label: 'MISRA C++ Conformance Pack',
+                desc: 'Validates automotive-grade safety guidelines, pointer restrictions, stack-allocation boundaries.',
+                enabled: true,
+              },
+              {
+                id: 'sqlite-security',
+                label: 'SQLite Security Bindings (RFC-004)',
+                desc: 'Validates parameterized placeholders, detects raw C++ SQL string concatenations.',
+                enabled: true,
+              },
+              {
+                id: 'company-rules',
+                label: 'Enterprise Custom Checks',
+                desc: 'Specific styling, naming guidelines, file directory structure checks.',
+                enabled: false,
+              },
+            ].map((pack) => (
+              <div
+                key={pack.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px',
+                  backgroundColor: 'var(--sds-surface)',
+                  border: '1px solid var(--sds-border)',
+                  borderRadius: 'var(--sds-radius-lg)',
+                }}
+              >
+                <div>
+                  <h4
+                    style={{ fontSize: '14px', fontWeight: 600, color: 'var(--sds-text-heading)' }}
+                  >
+                    {pack.label}
+                  </h4>
+                  <p style={{ fontSize: '12px', color: 'var(--sds-text-muted)', marginTop: '4px' }}>
+                    {pack.desc}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      color: pack.enabled ? 'var(--sds-success)' : 'var(--sds-text-muted)',
+                      backgroundColor: pack.enabled
+                        ? 'rgba(16,185,129,0.12)'
+                        : 'rgba(255,255,255,0.03)',
+                      padding: '2px 8px',
+                      borderRadius: 'var(--sds-radius-pill)',
+                    }}
+                  >
+                    {pack.enabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                  <button
+                    onClick={() => {}}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      color: 'var(--sds-text-muted)',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                    }}
+                  >
+                    ⚙ Configure
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setActiveWorkspace('marketplace')}
+            className="sds-btn sds-btn-primary"
+            style={{ alignSelf: 'flex-start', marginTop: '12px' }}
+          >
+            Browse Extension Store →
+          </button>
+        </div>
+      );
+    }
+
+    if (activeWorkspace === 'running') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+              Analysis Executions
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)', marginTop: '4px' }}>
+              Check-by-check verification log of the active pre-commit gates.
+            </p>
+          </div>
+
+          <div
+            className="sds-card"
+            style={{
+              padding: 'var(--sds-space-20)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--sds-text-heading)' }}>
+                {isScanning
+                  ? `RUNNING SENTINEL CHECKS... ${scanProgress}%`
+                  : 'VERIFICATION COMPLETE'}
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                docker-sandbox container
+              </span>
+            </div>
+
+            {/* Progress Bar */}
+            <div
+              style={{
+                width: '100%',
+                height: '4px',
+                backgroundColor: 'var(--sds-border)',
+                borderRadius: 'var(--sds-radius-pill)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${scanProgress}%`,
+                  height: '100%',
+                  backgroundColor: 'var(--sds-primary)',
+                  transition: 'width 0.15s ease',
+                }}
+              />
+            </div>
+
+            {/* Checkers Listing */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {[
+                {
+                  name: 'Documentation Checks',
+                  status: 'Success',
+                  icon: '✓',
+                  color: 'var(--sds-success)',
+                },
+                {
+                  name: 'MISRA C++ Validation Standards',
+                  status: isScanning ? (scanProgress > 70 ? 'Success' : 'Running') : 'Success',
+                  icon: isScanning ? (scanProgress > 70 ? '✓' : '■') : '✓',
+                  color: isScanning
+                    ? scanProgress > 70
+                      ? 'var(--sds-success)'
+                      : 'var(--sds-primary)'
+                    : 'var(--sds-success)',
+                },
+                {
+                  name: 'Cppcheck Code Audits',
+                  status: isScanning ? (scanProgress > 40 ? 'Running' : 'Waiting') : 'Success',
+                  icon: isScanning ? (scanProgress > 40 ? '■' : '●') : '✓',
+                  color: isScanning
+                    ? scanProgress > 40
+                      ? 'var(--sds-primary)'
+                      : 'var(--sds-text-muted)'
+                    : 'var(--sds-success)',
+                },
+                {
+                  name: 'SQLite Parameter Security checks',
+                  status: isScanning ? 'Waiting' : 'Success',
+                  icon: isScanning ? '●' : '✓',
+                  color: isScanning ? 'var(--sds-text-muted)' : 'var(--sds-success)',
+                },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    backgroundColor: 'rgba(0,0,0,0.12)',
+                    borderRadius: 'var(--sds-radius-md)',
+                    border: '1px solid var(--sds-border)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ color: item.color, fontWeight: 700, fontSize: '13px' }}>
+                      {item.icon}
+                    </span>
+                    <span style={{ fontSize: '13px', color: 'var(--sds-text)', fontWeight: 500 }}>
+                      {item.name}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '11px', color: item.color, fontWeight: 600 }}>
+                    {item.status.toUpperCase()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (activeWorkspace === 'history') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+              Execution History
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)', marginTop: '4px' }}>
+              Audit timeline of previous analysis runs and pre-commit checks.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {[
+              {
+                time: 'Today, 2:14 PM',
+                status: 'Blocked',
+                event: 'Scan finished: 2 issues detected (1 critical SQL injection blocker).',
+                details: 'Commit aborted by pre-commit-check hook.',
+              },
+              {
+                time: 'Yesterday, 4:32 PM',
+                status: 'Success',
+                event: 'Applied 12 Safe Fixes on local workspace.',
+                details: 'Quality score improved +2.5%.',
+              },
+              {
+                time: 'Yesterday, 10:15 AM',
+                status: 'Success',
+                event: 'Scan finished: 0 issues detected.',
+                details: 'Ready to commit.',
+              },
+              {
+                time: '3 days ago, 11:20 AM',
+                status: 'Success',
+                event: 'Initial workspace repository initialized.',
+                details: 'Repository Sentinel mapped successfully.',
+              },
+            ].map((run, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  position: 'relative',
+                  paddingLeft: '12px',
+                }}
+              >
+                {idx !== 3 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: '4px',
+                      top: '20px',
+                      bottom: '-20px',
+                      width: '2px',
+                      backgroundColor: 'var(--sds-border)',
+                    }}
+                  />
+                )}
+                <div
+                  style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor:
+                      run.status === 'Blocked' ? 'var(--sds-danger)' : 'var(--sds-success)',
+                    marginTop: '5px',
+                    zIndex: 2,
+                  }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                    {run.time}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '13.5px',
+                      fontWeight: 600,
+                      color: 'var(--sds-text-heading)',
+                    }}
+                  >
+                    {run.event}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--sds-text)' }}>{run.details}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (activeWorkspace === 'marketplace') {
+      return (
+        <PluginMarketplace
+          selectedPluginId={selectedPluginId}
+          onPluginSelect={(p) => {
+            setSelectedPluginId(p.id);
+            setSelectedPlugin(p);
+          }}
+        />
+      );
+    }
+
+    if (activeWorkspace === 'settings') {
+      return <SettingsWorkspace theme={theme} onThemeToggle={handleToggleTheme} />;
+    }
+
+    return null;
   };
 
+  // Right Panel Content
+  const renderRightPanelContent = () => {
+    if (activeWorkspace === 'queue' || activeWorkspace === 'repository') {
+      if (isInvestigating) {
+        // Deep Dive Investigation Details
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                borderBottom: '1px solid var(--sds-border)',
+                paddingBottom: '8px',
+              }}
+            >
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+                INVESTIGATION TABS
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              {(
+                [
+                  { id: 'summary', label: 'Summary' },
+                  { id: 'why', label: 'Why Flow' },
+                  { id: 'call_flow', label: 'Call Flow' },
+                  { id: 'ownership', label: 'Ownership' },
+                  { id: 'git', label: 'Git blame' },
+                  { id: 'discussion', label: 'Review Notes' },
+                ] as {
+                  id:
+                    | 'summary'
+                    | 'why'
+                    | 'call_flow'
+                    | 'ownership'
+                    | 'related'
+                    | 'git'
+                    | 'reasoning'
+                    | 'docs'
+                    | 'discussion';
+                  label: string;
+                }[]
+              ).map((panel) => (
+                <button
+                  key={panel.id}
+                  onClick={() => setActivePanel(panel.id)}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    borderRadius: 'var(--sds-radius-sm)',
+                    border: 'none',
+                    backgroundColor:
+                      activePanel === panel.id ? 'var(--sds-primary)' : 'rgba(255,255,255,0.04)',
+                    color: activePanel === panel.id ? '#fff' : 'var(--sds-text)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {panel.label}
+                </button>
+              ))}
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                fontSize: '13px',
+              }}
+            >
+              {activePanel === 'summary' && selectedIssue && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>{selectedIssue.title}</h3>
+                  <p style={{ color: 'var(--sds-text-muted)', lineHeight: '1.45' }}>
+                    {selectedIssue.description}
+                  </p>
+                  <div>
+                    <span
+                      style={{
+                        color: 'var(--sds-text-heading)',
+                        fontWeight: 600,
+                        display: 'block',
+                      }}
+                    >
+                      Impact:
+                    </span>
+                    <span style={{ color: 'var(--sds-text-muted)' }}>{selectedIssue.impact}</span>
+                  </div>
+                  <div>
+                    <span
+                      style={{
+                        color: 'var(--sds-text-heading)',
+                        fontWeight: 600,
+                        display: 'block',
+                      }}
+                    >
+                      Recommended Fix:
+                    </span>
+                    <span style={{ color: 'var(--sds-text-muted)' }}>
+                      {selectedIssue.fix?.description}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'why' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>
+                    Concurrency & Safety Diagnostics
+                  </h3>
+                  <div
+                    style={{
+                      padding: '10px',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      borderRadius: 'var(--sds-radius-md)',
+                      border: '1px solid var(--sds-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--sds-primary)', fontWeight: 600 }}>
+                        1. INITIALIZE
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                        IpcServer.cpp:L35
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--sds-warning)', fontWeight: 600 }}>
+                        2. READ DATA
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                        IpcServer.cpp:L42
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--sds-danger)', fontWeight: 600 }}>
+                        3. INJECTION
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                        IpcServer.cpp:L45
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'call_flow' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Call Trace Hierarchy</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {['main()', 'dispatch()', 'handleQuery()'].map((node, i) => (
+                      <div
+                        key={i}
+                        onClick={() => setSelectedCallNode(node)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor:
+                            selectedCallNode === node
+                              ? 'rgba(99,102,241,0.1)'
+                              : 'rgba(255,255,255,0.02)',
+                          border: '1px solid',
+                          borderColor:
+                            selectedCallNode === node ? 'var(--sds-primary)' : 'var(--sds-border)',
+                          borderRadius: 'var(--sds-radius-md)',
+                          cursor: 'pointer',
+                          fontFamily: 'var(--sds-font-mono)',
+                          fontSize: '11.5px',
+                        }}
+                      >
+                        {node}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'ownership' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Pointer Lifespan Chart</h3>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      fontSize: '11.5px',
+                    }}
+                  >
+                    <div
+                      style={{ borderBottom: '1px solid var(--sds-border)', paddingBottom: '4px' }}
+                    >
+                      <strong style={{ color: 'var(--sds-primary)' }}>[ALLOCATE]</strong> Memory
+                      buffer reserved.
+                    </div>
+                    <div
+                      style={{ borderBottom: '1px solid var(--sds-border)', paddingBottom: '4px' }}
+                    >
+                      <strong style={{ color: 'var(--sds-warning)' }}>[TRANSFER]</strong> Scope
+                      ownership passes.
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--sds-danger)' }}>[EXPIRE]</strong> Scope
+                      variables go out of bounds.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'git' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Git Blame History</h3>
+                  <div
+                    style={{
+                      padding: '12px',
+                      backgroundColor: 'rgba(255,255,255,0.02)',
+                      borderRadius: 'var(--sds-radius-md)',
+                      border: '1px solid var(--sds-border)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '11.5px',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      <strong>Sanket Ghodake</strong>
+                      <span style={{ color: 'var(--sds-text-muted)' }}>2 days ago</span>
+                    </div>
+                    <code
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--sds-primary)',
+                        display: 'block',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      commit e5f67b2d56
+                    </code>
+                    <p style={{ margin: 0, fontSize: '12px', lineHeight: '1.4' }}>
+                      "Initialize database query interface and add SQL routing callbacks"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {activePanel === 'discussion' && (
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}
+                >
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Code Review Discussion</h3>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      flex: 1,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {comments.map((c, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '8px 10px',
+                          backgroundColor: 'rgba(255,255,255,0.02)',
+                          borderRadius: 'var(--sds-radius-md)',
+                          border: '1px solid var(--sds-border)',
+                          fontSize: '12px',
+                        }}
+                      >
+                        {c}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                    <input
+                      type="text"
+                      placeholder="Add comment..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      style={{
+                        flex: 1,
+                        backgroundColor: 'var(--sds-bg)',
+                        border: '1px solid var(--sds-border)',
+                        borderRadius: 'var(--sds-radius-sm)',
+                        padding: '6px',
+                        fontSize: '12px',
+                        color: '#fff',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        if (newComment) {
+                          setComments((prev) => [...prev, `Sanket: ${newComment}`]);
+                          setNewComment('');
+                        }
+                      }}
+                      className="sds-btn sds-btn-primary"
+                      style={{ padding: '6px 12px', fontSize: '11px' }}
+                    >
+                      Post
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // Normal right panel details (Apple-settings / JetBrains style: cardless)
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-20)' }}>
+          {selectedIssue ? (
+            <>
+              <div>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: 'var(--sds-text-muted)',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  ISSUE DETAILS
+                </span>
+              </div>
+
+              {/* Smart Explanation */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <h4
+                    style={{
+                      fontSize: '13.5px',
+                      fontWeight: 700,
+                      color: 'var(--sds-text-heading)',
+                    }}
+                  >
+                    Smart Explanation
+                  </h4>
+                  <span style={{ fontSize: '11px', color: 'var(--sds-primary)', fontWeight: 600 }}>
+                    {getConfidenceLevel(selectedIssue).score}% Confidence
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    fontSize: '12.5px',
+                    lineHeight: '1.45',
+                  }}
+                >
+                  <div>
+                    <strong
+                      style={{
+                        color: 'var(--sds-text-heading)',
+                        fontSize: '11.5px',
+                        display: 'block',
+                        marginBottom: '2px',
+                      }}
+                    >
+                      Diagnostic Reasoning
+                    </strong>
+                    <p style={{ margin: '0', color: 'var(--sds-text)' }}>
+                      {selectedIssue.description}
+                    </p>
+                  </div>
+                  <div
+                    style={{ height: '1px', backgroundColor: 'var(--sds-border)', margin: '4px 0' }}
+                  />
+                  <div>
+                    <strong
+                      style={{
+                        color: 'var(--sds-text-heading)',
+                        fontSize: '11.5px',
+                        display: 'block',
+                        marginBottom: '2px',
+                      }}
+                    >
+                      Vulnerability Blast Radius
+                    </strong>
+                    <p style={{ margin: '0', color: 'var(--sds-text-muted)' }}>
+                      {selectedIssue.impact}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', backgroundColor: 'var(--sds-border)' }} />
+
+              {/* Recommended Actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <h4
+                  style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--sds-text-heading)' }}
+                >
+                  Recommended Actions
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedIssue.fix && selectedIssue.status === 'Open' ? (
+                    <button
+                      onClick={() => handleApplyFix(selectedIssue.id)}
+                      className="sds-btn sds-btn-primary"
+                      style={{ justifyContent: 'center', width: '100%', fontSize: '12px' }}
+                    >
+                      Apply Automated Safe Fix
+                    </button>
+                  ) : (
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--sds-success)',
+                        textAlign: 'center',
+                        padding: '4px',
+                      }}
+                    >
+                      ✓ Warning resolved or deferred.
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setIsInvestigating(true)}
+                    className="sds-btn sds-btn-secondary"
+                    style={{ justifyContent: 'center', width: '100%', fontSize: '12px' }}
+                  >
+                    Enter Investigation Mode (Explain)
+                  </button>
+
+                  {selectedIssue.status === 'Open' && (
+                    <button
+                      onClick={() => setShowIgnoreModal(selectedIssue.id)}
+                      className="sds-btn sds-btn-secondary"
+                      style={{
+                        justifyContent: 'center',
+                        width: '100%',
+                        color: 'var(--sds-text-muted)',
+                        fontSize: '12px',
+                      }}
+                    >
+                      Ignore / Defer Warning
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '24px 0',
+              }}
+            >
+              <HelpCircle size={24} color="var(--sds-text-muted)" />
+              <div style={{ textAlign: 'center' }}>
+                <span
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    color: 'var(--sds-text-heading)',
+                    display: 'block',
+                  }}
+                >
+                  No Issue Selected
+                </span>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    color: 'var(--sds-text-muted)',
+                    display: 'block',
+                    marginTop: '4px',
+                  }}
+                >
+                  Select an item from the work queue to inspect detailed static check diagnostics.
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  // ----------------------------------------------------
+  // FINAL LAYOUT SHELL RENDERING
+  // ----------------------------------------------------
+
   return (
-    <div className="sds-shell">
-      {/* Top Header Bar */}
+    <div
+      className="sds-shell"
+      style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}
+    >
+      {/* Top Header Bar Toolbar */}
       <Topbar
         projects={projects}
         activeProjectId={activeProjectId}
         onProjectChange={handleProjectChange}
+        activeWorkspace={activeWorkspace}
+        onWorkspaceChange={(ws) => {
+          setActiveWorkspace(ws);
+          if (ws !== 'issues') {
+            setIsInvestigating(false);
+          }
+        }}
+        scope={scope}
+        onScopeChange={setScope}
         onRunScan={handleRunScan}
+        onStopScan={handleStopScan}
         isScanning={isScanning}
         scanProgress={scanProgress}
-        activeWorkspaceTitle={workspaceTitles[activeWorkspace] || activeWorkspace}
+        blockingIssuesCount={
+          issues.filter(
+            (i) =>
+              (i.severity === 'Critical' || i.severity === 'High') &&
+              i.status === 'Open' &&
+              !ignoredIssues[i.id],
+          ).length
+        }
         onSearchClick={() => setIsSearchOpen(true)}
-        onProfileClick={() => setInspectorObject({ type: 'profile', data: {} })}
+        onProfileClick={() => setIsRightCollapsed((prev) => !prev)}
       />
 
-      {/* Main Grid: Navigation (left) - Workspace (center) - Inspector (right) */}
-      <div className="sds-main-grid">
-        <Sidebar
-          activeItem={activeWorkspace}
-          onItemSelect={setActiveWorkspace}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed((c) => !c)}
-          openIssuesCount={issues.filter((i) => i.status === 'Open').length}
-          autofixesCount={issues.filter((i) => i.status === 'Open' && i.fix).length}
-        />
-        <main className="sds-workspace">{renderWorkspaceContent()}</main>
-        <Inspector
-          inspectorObject={inspectorObject}
-          onApplyFix={handleApplyFix}
-          isApplying={false}
-          onNavigateToImprove={() => setActiveWorkspace('improve')}
-          onClose={() => setInspectorObject(null)}
-        />
+      {/* Main Grid: Left Panel | Center Panel with Bottom Drawer | Right Panel */}
+      <div
+        className="sds-main-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `${isLeftCollapsed ? '0px' : '260px'} 1fr ${isRightCollapsed ? '0px' : '360px'}`,
+          flex: 1,
+          overflow: 'hidden',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {/* Left Panel */}
+        <aside
+          style={{
+            backgroundColor: 'var(--sds-surface)',
+            borderRight: '1px solid var(--sds-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            padding: isLeftCollapsed ? '0px' : 'var(--sds-space-16)',
+            opacity: isLeftCollapsed ? 0 : 1,
+            pointerEvents: isLeftCollapsed ? 'none' : 'auto',
+            transition: 'all 0.25s ease',
+          }}
+        >
+          {renderLeftPanelContent()}
+        </aside>
+
+        {/* Center Panel (Core Area & Bottom Tabbed Drawer) */}
+        <main
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            overflow: 'hidden',
+            backgroundColor: 'var(--sds-bg)',
+            position: 'relative',
+          }}
+        >
+          {/* Main workspace scrollable content */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: 'var(--sds-space-24)',
+            }}
+          >
+            {renderCenterPanelContent()}
+          </div>
+
+          {/* Bottom Drawer indicator / toggle bar */}
+          <div
+            style={{
+              height: isBottomCollapsed ? '32px' : '280px',
+              borderTop: '1px solid var(--sds-border)',
+              backgroundColor: 'var(--sds-surface)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.1)',
+                padding: '0 16px',
+                height: '32px',
+                borderBottom: '1px solid var(--sds-border)',
+                cursor: 'pointer',
+              }}
+              onClick={() => setIsBottomCollapsed(!isBottomCollapsed)}
+            >
+              <span
+                style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--sds-text-heading)' }}
+              >
+                {isBottomCollapsed ? '▲ Expand Context Drawer' : '▼ Collapse Drawer'}
+              </span>
+              <span style={{ fontSize: '10px', color: 'var(--sds-text-muted)' }}>Ctrl+`</span>
+            </div>
+
+            {!isBottomCollapsed && (
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <BottomDrawer
+                  selectedIssue={selectedIssue}
+                  selectedFile={selectedFile}
+                  activeTab={bottomTab}
+                  onTabChange={setBottomTab}
+                  isScanning={isScanning}
+                  scanProgress={scanProgress}
+                  onApplyFix={handleApplyFix}
+                />
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Right Panel */}
+        <aside
+          style={{
+            backgroundColor: 'var(--sds-surface)',
+            borderLeft: '1px solid var(--sds-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            padding: isRightCollapsed ? '0px' : 'var(--sds-space-16)',
+            opacity: isRightCollapsed ? 0 : 1,
+            pointerEvents: isRightCollapsed ? 'none' : 'auto',
+            transition: 'all 0.25s ease',
+          }}
+        >
+          {renderRightPanelContent()}
+        </aside>
       </div>
 
-      {/* Bottom Status Indicator Bar */}
+      {/* Bottom Status bar */}
       <Statusbar
         isScanning={isScanning}
         branchName={activeProject?.branch || 'main'}
@@ -1142,10 +2047,12 @@ function App() {
         onSelectProject={handleProjectChange}
         onSelectIssue={(id) => {
           setSelectedIssueId(id);
-          const iss = issues.find((i) => i.id === id);
-          if (iss) setInspectorObject({ type: 'issue', data: iss });
+          setIsInvestigating(true);
         }}
-        onNavigateToWorkspace={setActiveWorkspace}
+        onNavigateToWorkspace={(ws) => {
+          setActiveWorkspace(ws);
+          if (ws !== 'issues') setIsInvestigating(false);
+        }}
       />
 
       <CommandPalette
@@ -1154,8 +2061,80 @@ function App() {
         onRunFullScan={handleRunScan}
         onApplySafeFixes={handleApplySafeFixes}
         onToggleTheme={handleToggleTheme}
-        onNavigateToWorkspace={setActiveWorkspace}
+        onNavigateToWorkspace={(ws) => {
+          setActiveWorkspace(ws);
+          if (ws !== 'issues') setIsInvestigating(false);
+        }}
       />
+
+      {/* Ignore Modal */}
+      {showIgnoreModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="sds-card"
+            style={{
+              padding: 'var(--sds-space-24)',
+              maxWidth: '400px',
+              width: '90%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--sds-text-heading)' }}>
+              Ignore Issue Warning
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)' }}>
+              Please provide a deferral reason to ignore this warning on pre-commit security audits.
+            </p>
+            <input
+              type="text"
+              placeholder="e.g. False positive, internal mock only"
+              value={ignoreReason}
+              onChange={(e) => setIgnoreReason(e.target.value)}
+              style={{
+                width: '100%',
+                backgroundColor: 'var(--sds-bg)',
+                border: '1px solid var(--sds-border)',
+                borderRadius: 'var(--sds-radius-md)',
+                padding: '8px 12px',
+                color: '#fff',
+                fontSize: '13px',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setShowIgnoreModal(null)}
+                className="sds-btn sds-btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleIgnoreSubmit}
+                className="sds-btn sds-btn-primary"
+                style={{ padding: '6px 12px', fontSize: '12px' }}
+              >
+                Confirm Ignore
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

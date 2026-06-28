@@ -1,15 +1,20 @@
 import React from 'react';
-import { Play, Loader2, Bell, Search, Shield, User } from 'lucide-react';
+import { Play, Square, Search, Shield, User, CheckCircle, AlertTriangle } from 'lucide-react';
 import type { Project } from '../services/clientApi';
 
 interface TopbarProps {
   projects: Project[];
   activeProjectId: string;
   onProjectChange: (id: string) => void;
+  activeWorkspace: string;
+  onWorkspaceChange: (ws: string) => void;
+  scope: string;
+  onScopeChange: (scope: string) => void;
   onRunScan: () => void;
+  onStopScan?: () => void;
   isScanning: boolean;
   scanProgress: number;
-  activeWorkspaceTitle: string;
+  blockingIssuesCount: number;
   onSearchClick: () => void;
   onProfileClick: () => void;
 }
@@ -18,90 +23,109 @@ export const Topbar: React.FC<TopbarProps> = ({
   projects,
   activeProjectId,
   onProjectChange,
+  activeWorkspace,
+  onWorkspaceChange,
+  scope,
+  onScopeChange,
   onRunScan,
+  onStopScan,
   isScanning,
-  scanProgress,
-  activeWorkspaceTitle,
+  scanProgress: _scanProgress,
+  blockingIssuesCount,
   onSearchClick,
   onProfileClick,
 }) => {
+  const getCommitStatus = () => {
+    if (blockingIssuesCount === 0) {
+      return (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            backgroundColor: 'var(--sds-success-bg)',
+            borderRadius: 'var(--sds-radius-pill)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            fontSize: '11px',
+            fontWeight: 600,
+            color: 'var(--sds-success)',
+          }}
+          title="No blocking critical or high issues. Ready to commit!"
+        >
+          <CheckCircle size={12} />
+          <span>READY TO COMMIT</span>
+        </div>
+      );
+    } else {
+      return (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            backgroundColor: 'var(--sds-danger-bg)',
+            borderRadius: 'var(--sds-radius-pill)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+            fontSize: '11px',
+            fontWeight: 600,
+            color: 'var(--sds-danger)',
+          }}
+          title={`${blockingIssuesCount} blocking issues must be resolved before committing.`}
+        >
+          <AlertTriangle size={12} />
+          <span>BLOCKED: {blockingIssuesCount} ISSUES</span>
+        </div>
+      );
+    }
+  };
+
   return (
     <header
       style={{
-        height: '64px',
+        height: '40px',
         backgroundColor: 'var(--sds-surface)',
         borderBottom: '1px solid var(--sds-border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 var(--sds-space-24)',
+        padding: '0 var(--sds-space-16)',
         zIndex: 10,
+        gap: 'var(--sds-space-12)',
+        userSelect: 'none',
       }}
     >
-      {/* Left Section: Logo & Workspace Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-24)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-12)' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'rgba(99, 102, 241, 0.15)',
-              padding: '6px',
-              borderRadius: 'var(--sds-radius-md)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-            }}
-          >
-            <Shield size={20} color="var(--sds-primary)" />
-          </div>
-          <span
-            style={{
-              fontFamily: 'var(--sds-font-sans)',
-              fontSize: '16px',
-              fontWeight: 700,
-              color: 'var(--sds-text-heading)',
-              letterSpacing: '0.75px',
-            }}
-          >
-            SENTINEL
-          </span>
-        </div>
-
-        {/* Separator line */}
-        <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--sds-border)' }} />
-
-        {/* Current Workspace Title */}
+      {/* 1. Left Section: Logo, Repository & Profile dropdowns */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-12)' }}>
         <span
           style={{
-            fontSize: '14px',
-            fontWeight: 600,
+            fontFamily: 'var(--sds-font-sans)',
+            fontSize: '13px',
+            fontWeight: 700,
             color: 'var(--sds-text-heading)',
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-            padding: '4px 12px',
-            borderRadius: 'var(--sds-radius-md)',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
+            letterSpacing: '0.5px',
           }}
         >
-          {activeWorkspaceTitle}
+          Sentinel
         </span>
-      </div>
 
-      {/* Middle Section: Project Switcher & Search */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-16)' }}>
-        {/* Project Switcher */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--sds-border)' }} />
+
+        {/* Repository Dropdown */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
           <select
             value={activeProjectId}
             onChange={(e) => onProjectChange(e.target.value)}
             disabled={isScanning}
             style={{
-              backgroundColor: 'var(--sds-bg)',
+              backgroundColor: 'transparent',
               color: 'var(--sds-text-heading)',
-              border: '1px solid var(--sds-border)',
-              borderRadius: 'var(--sds-radius-md)',
-              padding: '6px 32px 6px 12px',
+              border: 'none',
+              borderRadius: 'var(--sds-radius-sm)',
+              padding: '2px 20px 2px 4px',
               fontFamily: 'var(--sds-font-sans)',
-              fontSize: '13px',
+              fontSize: '12px',
               fontWeight: 500,
               cursor: isScanning ? 'not-allowed' : 'pointer',
               outline: 'none',
@@ -110,23 +134,124 @@ export const Topbar: React.FC<TopbarProps> = ({
             }}
           >
             {projects.map((proj) => (
-              <option key={proj.id} value={proj.id}>
+              <option
+                key={proj.id}
+                value={proj.id}
+                style={{ backgroundColor: 'var(--sds-surface)' }}
+              >
                 {proj.name}
               </option>
             ))}
           </select>
-          <div
+          <span
             style={{
+              fontSize: '9px',
+              color: 'var(--sds-text-muted)',
               position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
+              right: '4px',
               pointerEvents: 'none',
-              borderTop: '5px solid var(--sds-text)',
-              borderLeft: '4px solid transparent',
-              borderRight: '4px solid transparent',
             }}
-          />
+          >
+            ▼
+          </span>
+        </div>
+
+        <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--sds-border)' }} />
+
+        {/* Profile Dropdown */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={onProfileClick}
+            style={{
+              backgroundColor: 'transparent',
+              color: 'var(--sds-text-heading)',
+              border: 'none',
+              padding: '2px 16px 2px 4px',
+              fontFamily: 'var(--sds-font-sans)',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              outline: 'none',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <span>Sanket</span>
+          </button>
+          <span
+            style={{
+              fontSize: '9px',
+              color: 'var(--sds-text-muted)',
+              position: 'absolute',
+              right: '2px',
+              pointerEvents: 'none',
+            }}
+          >
+            ▼
+          </span>
+        </div>
+      </div>
+
+      {/* 2. Right Section: Scope, Search, Scan & Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-12)' }}>
+        {/* Scope (Focus) Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>Focus:</span>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <select
+              value={scope}
+              onChange={(e) => onScopeChange(e.target.value)}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--sds-text-heading)',
+                border: 'none',
+                borderRadius: 'var(--sds-radius-sm)',
+                padding: '2px 20px 2px 4px',
+                fontFamily: 'var(--sds-font-sans)',
+                fontSize: '11px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                outline: 'none',
+                appearance: 'none',
+                transition: 'all var(--sds-transition-fast)',
+              }}
+            >
+              <option value="entire" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Entire Repository
+              </option>
+              <option value="changed" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Changed Files
+              </option>
+              <option value="folder" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Current Folder
+              </option>
+              <option value="file" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Current File
+              </option>
+              <option value="staged" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Staged Changes
+              </option>
+              <option value="unstaged" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Unstaged Changes
+              </option>
+              <option value="bookmarks" style={{ backgroundColor: 'var(--sds-surface)' }}>
+                Bookmarks
+              </option>
+            </select>
+            <span
+              style={{
+                fontSize: '8px',
+                color: 'var(--sds-text-muted)',
+                position: 'absolute',
+                right: '4px',
+                pointerEvents: 'none',
+              }}
+            >
+              ▼
+            </span>
+          </div>
         </div>
 
         {/* Global Search box */}
@@ -134,32 +259,33 @@ export const Topbar: React.FC<TopbarProps> = ({
           onClick={onSearchClick}
           style={{
             position: 'relative',
-            width: '260px',
+            width: '140px',
             cursor: 'pointer',
           }}
+          title="Search issues, rules, or symbols (Ctrl+K)"
         >
           <Search
-            size={14}
+            size={10}
             color="var(--sds-text-muted)"
             style={{
               position: 'absolute',
-              left: '12px',
+              left: '8px',
               top: '50%',
               transform: 'translateY(-50%)',
             }}
           />
           <input
             type="text"
-            placeholder="Search (Ctrl+K)..."
+            placeholder="Search (Ctrl+K)"
             readOnly
             style={{
               width: '100%',
               backgroundColor: 'var(--sds-bg)',
               border: '1px solid var(--sds-border)',
-              borderRadius: 'var(--sds-radius-md)',
-              padding: '6px 12px 6px 32px',
+              borderRadius: 'var(--sds-radius-sm)',
+              padding: '3px 8px 3px 22px',
               fontFamily: 'var(--sds-font-sans)',
-              fontSize: '13px',
+              fontSize: '11px',
               color: 'var(--sds-text-heading)',
               outline: 'none',
               cursor: 'pointer',
@@ -170,136 +296,92 @@ export const Topbar: React.FC<TopbarProps> = ({
             onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--sds-border)')}
           />
         </div>
-      </div>
 
-      {/* Right Section: Scan, Notifications, User Profile */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-16)' }}>
-        {/* Progress Display */}
-        {isScanning && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--sds-space-12)',
-              fontSize: '12px',
-              color: 'var(--sds-primary)',
-            }}
-          >
-            <Loader2
-              size={14}
-              className="sds-spin"
-              style={{ animation: 'spin 1s linear infinite' }}
-            />
-            <span>Scanning {scanProgress}%</span>
-            <div
-              style={{
-                width: '60px',
-                height: '4px',
-                backgroundColor: 'var(--sds-border)',
-                borderRadius: 'var(--sds-radius-pill)',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  width: `${scanProgress}%`,
-                  height: '100%',
-                  backgroundColor: 'var(--sds-primary)',
-                  transition: 'width 0.2s ease',
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Run Scan Button */}
+        {/* Action: Run Scan / Stop Scan */}
         <button
-          onClick={onRunScan}
-          disabled={isScanning}
-          className="sds-btn sds-btn-primary"
+          onClick={isScanning && onStopScan ? onStopScan : onRunScan}
+          className="sds-btn"
           style={{
-            fontSize: '12px',
-            padding: '6px 14px',
+            fontSize: '11px',
+            padding: '3px 10px',
+            height: '24px',
+            backgroundColor: isScanning ? 'var(--sds-danger-bg)' : 'var(--sds-primary)',
+            color: isScanning ? 'var(--sds-danger)' : '#ffffff',
+            borderColor: isScanning ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            borderRadius: 'var(--sds-radius-sm)',
           }}
         >
           {isScanning ? (
             <>
-              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-              Scanning
+              <Square size={9} fill="currentColor" />
+              <span>Stop</span>
             </>
           ) : (
             <>
-              <Play size={14} fill="currentColor" />
-              Run Scan
+              <Play size={9} fill="currentColor" />
+              <span>Run</span>
             </>
           )}
         </button>
 
-        {/* Notifications Bell */}
-        <button
-          style={{
-            backgroundColor: 'transparent',
-            border: 'none',
-            color: 'var(--sds-text)',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            borderRadius: 'var(--sds-radius-sm)',
-            transition: 'color var(--sds-transition-fast)',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--sds-text-heading)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--sds-text)')}
-        >
-          <Bell size={18} />
+        <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--sds-border)' }} />
+
+        {/* Status Indicator */}
+        {blockingIssuesCount === 0 ? (
           <div
             style={{
-              position: 'absolute',
-              top: '2px',
-              right: '2px',
-              width: '6px',
-              height: '6px',
-              backgroundColor: 'var(--sds-danger)',
-              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--sds-success)',
             }}
-          />
-        </button>
-
-        {/* User / Profile menu */}
-        <button
-          onClick={onProfileClick}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--sds-surface-hover)',
-            border: '1px solid var(--sds-border)',
-            color: 'var(--sds-text-heading)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all var(--sds-transition-fast)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--sds-primary)';
-            e.currentTarget.style.backgroundColor = 'var(--sds-surface-active)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'var(--sds-border)';
-            e.currentTarget.style.backgroundColor = 'var(--sds-surface-hover)';
-          }}
-        >
-          <User size={16} />
-        </button>
+            title="No blocking critical or high issues. Ready to commit!"
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                backgroundColor: 'var(--sds-success)',
+                borderRadius: '50%',
+              }}
+            />
+            <span>Ready</span>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontWeight: 600,
+              color: 'var(--sds-danger)',
+            }}
+            title={`${blockingIssuesCount} blocking issues must be resolved before committing.`}
+          >
+            <span
+              style={{
+                width: '6px',
+                height: '6px',
+                backgroundColor: 'var(--sds-danger)',
+                borderRadius: '50%',
+              }}
+            />
+            <span>Blocked ({blockingIssuesCount})</span>
+          </div>
+        )}
       </div>
 
       <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 0.4; }
+          100% { transform: scale(1); opacity: 1; }
         }
       `}</style>
     </header>
