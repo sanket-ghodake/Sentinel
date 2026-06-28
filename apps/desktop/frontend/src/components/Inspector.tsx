@@ -19,6 +19,40 @@ import {
 } from 'lucide-react';
 import type { Issue } from '../services/clientApi';
 
+interface InspectorProject {
+  id: string;
+  name: string;
+  branch: string;
+  status: string;
+  language: string;
+  quality: number;
+}
+
+interface InspectorFile {
+  name: string;
+  path: string;
+  issuesCount: number;
+}
+
+interface InspectorFolder {
+  name: string;
+  path: string;
+}
+
+interface InspectorPlugin {
+  name: string;
+  version: string;
+  status?: string;
+}
+
+interface InspectorRecommendation {
+  title: string;
+  description: string;
+  category: string;
+  effort: string;
+  target: string;
+}
+
 export interface InspectorObject {
   type:
     | 'project'
@@ -384,7 +418,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     }
 
     case 'project': {
-      const proj = inspectorObject.data;
+      const proj = inspectorObject.data as InspectorProject;
       header = renderHeader(<Shield size={14} />, proj.name, `Branch: ${proj.branch}`, {
         text: proj.status === 'healthy' || proj.status === 'clean' ? 'Healthy' : 'Needs attention',
         type: proj.status === 'healthy' ? 'success' : 'warning',
@@ -469,7 +503,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     }
 
     case 'file': {
-      const file = inspectorObject.data;
+      const file = inspectorObject.data as InspectorFile;
       header = renderHeader(<FileCode size={14} />, file.name, file.path, {
         text: file.issuesCount > 0 ? `${file.issuesCount} Issues` : 'Clean',
         type: file.issuesCount > 0 ? 'warning' : 'success',
@@ -509,7 +543,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     }
 
     case 'folder': {
-      const folder = inspectorObject.data;
+      const folder = inspectorObject.data as InspectorFolder;
       header = renderHeader(<Folder size={14} />, folder.name, folder.path);
 
       if (activeTab === 'summary') {
@@ -541,7 +575,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     }
 
     case 'plugin': {
-      const plugin = inspectorObject.data;
+      const plugin = inspectorObject.data as InspectorPlugin;
       header = renderHeader(<Puzzle size={14} />, plugin.name, `Version: ${plugin.version}`, {
         text: plugin.status || 'Active',
         type: 'success',
@@ -579,7 +613,7 @@ export const Inspector: React.FC<InspectorProps> = ({
     }
 
     case 'recommendation': {
-      const rec = inspectorObject.data;
+      const rec = inspectorObject.data as InspectorRecommendation;
       header = renderHeader(
         <FileText size={14} />,
         rec.title || 'Safe Recommendation',

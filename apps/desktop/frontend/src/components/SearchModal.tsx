@@ -145,7 +145,6 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       category: 'Issues' as const,
       subtitle: `${i.severity} Severity | ${i.location.fileId}:${i.location.line}`,
       action: () => {
-        onSelectProject(i.projectId);
         onSelectIssue(i.id);
         onNavigateToWorkspace('analyze');
         onClose();
