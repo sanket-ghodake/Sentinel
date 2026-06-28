@@ -1,11 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <vector>
 
 #include "core/event_bus/EventBus.h"
+#include "core/storage/Database.h"
 #include "sentinel/ClientApi.h"
 
 namespace sentinel {
@@ -33,12 +35,7 @@ private:
     EventBus& eventBus_;
     std::mutex mutex_;
 
-    std::unordered_map<ProjectId, Project> projects_;
-    std::unordered_map<std::string, ProjectId> pathToProjectId_;
-    std::unordered_map<ScanId, Scan> scans_;
-    std::unordered_map<ProjectId, std::vector<Issue>> issues_;
-    std::unordered_map<ProjectId, std::vector<Recommendation>> recommendations_;
-
+    std::unique_ptr<Database> db_;
     std::vector<std::jthread> scanThreads_;
 };
 

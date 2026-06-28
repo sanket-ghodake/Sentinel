@@ -1,6 +1,7 @@
 #include "FakeClientApi.h"
 
 #include <chrono>
+#include <iostream>
 
 #include "core/event_bus/Event.h"
 
@@ -8,7 +9,11 @@ namespace sentinel {
 
 FakeClientApi::FakeClientApi(EventBus& eventBus) : eventBus_(eventBus)
 {
-    initializeMockData();
+    db_ = std::make_unique<Database>("sentinel_cache.db");
+    if (db_->InitializeSchema()) {
+        db_->BindToEventBus(eventBus_);
+        initializeMockData();
+    }
 }
 
 FakeClientApi::~FakeClientApi()
@@ -18,6 +23,12 @@ FakeClientApi::~FakeClientApi()
 
 void FakeClientApi::initializeMockData()
 {
+    auto existingProj = db_->GetProjects();
+    if (existingProj.has_value() && !existingProj.value().empty()) {
+        return;  // Already populated
+    }
+
+    // Populate mock projects, issues, and recommendations in Database
     // 1. Sentinel Core (C++) Project
     ProjectId p1Id("proj-sentinel");
     Project p1{.id = p1Id,
@@ -62,6 +73,7 @@ void FakeClientApi::initializeMockData()
                     .risk = Severity::Low,
                     .safe = true,
                     .impact = 1.0,
+                    .description = "Use parameterized bindings",
                     .preview =
                         "BEFORE: SELECT * FROM users WHERE name = input_val;\nAFTER: "
                         "SELECT * FROM users WHERE name = ?;\n        sqlite3_bind_text(stmt, 1, "
@@ -141,13 +153,14 @@ void FakeClientApi::initializeMockData()
         .status = IssueStatus::Open,
         .owner = "Sanket"};
 
-    projects_[p1Id] = p1;
-    pathToProjectId_[p1.path] = p1Id;
-    issues_[p1Id] = {cppIssue1, cppIssue2};
+    ScanId initialScanId("scan-initial");
 
-    projects_[p2Id] = p2;
-    pathToProjectId_[p2.path] = p2Id;
-    issues_[p2Id] = {tsIssue1};
+    (void)db_->SaveProject(p1);
+    (void)db_->SaveProject(p2);
+
+    (void)db_->SaveIssue(p1Id, initialScanId, cppIssue1);
+    (void)db_->SaveIssue(p1Id, initialScanId, cppIssue2);
+    (void)db_->SaveIssue(p2Id, initialScanId, tsIssue1);
 
     Recommendation cppRec1{
         .id = RecommendationId("rec-sql-1"),
@@ -268,39 +281,47 @@ void FakeClientApi::initializeMockData()
         .learningBestPractice = "Leverage logger services instead of raw stdout console streams.",
         .learningReferences = {"12-Factor App Logging guidelines"}};
 
-    recommendations_[p1Id] = {cppRec1, cppRec2};
-    recommendations_[p2Id] = {tsRec1};
+    (void)db_->SaveRecommendation(p1Id, cppRec1);
+    (void)db_->SaveRecommendation(p1Id, cppRec2);
+    (void)db_->SaveRecommendation(p2Id, tsRec1);
+
+    // Seed initial Quality recalculation
+    (void)db_->RecalculateQuality(p1Id, initialScanId);
+    (void)db_->RecalculateQuality(p2Id, initialScanId);
 }
 
 Expected<Project, Error> FakeClientApi::OpenProject(const std::string& path)
 {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    auto it = pathToProjectId_.find(path);
-    if (it == pathToProjectId_.end()) {
-        return Unexpected<Error>(Error{.message = "Project path does not exist", .code = 404});
+    auto projects = db_->GetProjects();
+    if (!projects) {
+        return Unexpected<Error>(projects.error());
     }
 
-    return projects_[it->second];
+    for (const auto& proj : projects.value()) {
+        if (proj.path == path) {
+            return proj;
+        }
+    }
+
+    return Unexpected<Error>(Error{.message = "Project path does not exist", .code = 404});
 }
 
 Expected<Scan, Error> FakeClientApi::RunScan(const ProjectId& projectId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    auto it = projects_.find(projectId);
-    if (it == projects_.end()) {
-        return Unexpected<Error>(Error{.message = "Project ID not found", .code = 404});
+    auto projRes = db_->GetProject(projectId);
+    if (!projRes) {
+        return Unexpected<Error>(projRes.error());
     }
 
-    // If already scanning, return the active scan
-    for (const auto& [scanId, scan] : scans_) {
-        if (scan.projectId == projectId && scan.status == "scanning") {
-            return scan;
-        }
-    }
-
-    std::string scanIdStr = "scan-" + std::to_string(scans_.size() + 1);
+    std::string scanIdStr =
+        "scan-" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                     std::chrono::system_clock::now().time_since_epoch())
+                                     .count() %
+                                 1000000);
     ScanId scanId(scanIdStr);
 
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -310,15 +331,16 @@ Expected<Scan, Error> FakeClientApi::RunScan(const ProjectId& projectId)
     Scan scan{.id = scanId,
               .projectId = projectId,
               .profileId = ProfileId("default"),
-              .rules = it->second.rules,
-              .plugins = it->second.plugins,
+              .rules = projRes.value().rules,
+              .plugins = projRes.value().plugins,
               .analyzers = {AnalyzerId("cppcheck"), AnalyzerId("clang-tidy")},
               .startTime = static_cast<uint64_t>(now),
               .endTime = 0,
               .status = "scanning"};
 
-    it->second.status = "scanning";
-    scans_[scanId] = scan;
+    projRes.value().status = "scanning";
+    (void)db_->SaveProject(projRes.value());
+    (void)db_->SaveScan(scan);
 
     scanThreads_.emplace_back([this, scanId, projectId](std::stop_token stopToken) {
         simulateScan(scanId, projectId, stopToken);
@@ -330,71 +352,54 @@ Expected<Scan, Error> FakeClientApi::RunScan(const ProjectId& projectId)
 Expected<std::vector<Issue>, Error> FakeClientApi::GetIssues(const ProjectId& projectId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = projects_.find(projectId);
-    if (it == projects_.end()) {
-        return Unexpected<Error>(Error{.message = "Project ID not found", .code = 404});
-    }
-
-    return issues_[projectId];
+    return db_->GetIssues(projectId);
 }
 
 Expected<bool, Error> FakeClientApi::ApplyAutofix(const IssueId& issueId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    for (auto& [projectId, list] : issues_) {
-        for (auto& issue : list) {
-            if (issue.id == issueId) {
-                if (issue.status == IssueStatus::Resolved) {
-                    return true;  // Already resolved
-                }
-                issue.status = IssueStatus::Resolved;
+    // Resolve issue in DB
+    auto resolveRes = db_->ResolveIssue(issueId);
+    if (!resolveRes) {
+        return Unexpected<Error>(resolveRes.error());
+    }
 
-                // Update project issues count and quality score
-                auto projIt = projects_.find(projectId);
-                if (projIt != projects_.end()) {
-                    if (projIt->second.totalIssues > 0) {
-                        projIt->second.totalIssues--;
+    // Find which project this issue belongs to
+    auto projects = db_->GetProjects();
+    if (projects) {
+        for (const auto& proj : projects.value()) {
+            auto issues = db_->GetIssues(proj.id);
+            if (issues) {
+                for (const auto& issue : issues.value()) {
+                    if (issue.id == issueId) {
+                        // Expose dummy/current scan ID to trigger recalculation
+                        ScanId dummyScanId("scan-autofix");
+                        (void)db_->RecalculateQuality(proj.id, dummyScanId);
+                        return true;
                     }
-                    projIt->second.quality = std::min(100.0, projIt->second.quality + 1.5);
                 }
-                return true;
             }
         }
     }
 
-    return Unexpected<Error>(Error{.message = "Issue ID not found", .code = 404});
+    return true;
 }
 
 Expected<Project, Error> FakeClientApi::GetProjectSummary(const ProjectId& projectId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = projects_.find(projectId);
-    if (it == projects_.end()) {
-        return Unexpected<Error>(Error{.message = "Project ID not found", .code = 404});
-    }
-
-    return it->second;
+    return db_->GetProject(projectId);
 }
 
 Expected<std::vector<Project>, Error> FakeClientApi::GetProjects()
 {
     std::lock_guard<std::mutex> lock(mutex_);
-
-    std::vector<Project> result;
-    result.reserve(projects_.size());
-    for (const auto& [id, project] : projects_) {
-        result.push_back(project);
-    }
-
-    return result;
+    return db_->GetProjects();
 }
 
 void FakeClientApi::simulateScan(ScanId scanId, ProjectId projectId, std::stop_token stopToken)
 {
-    // Sleep to simulate scan startup delay
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     if (stopToken.stop_requested())
         return;
@@ -407,7 +412,6 @@ void FakeClientApi::simulateScan(ScanId scanId, ProjectId projectId, std::stop_t
     eventBus_.publish(ScanStarted{
         .scanId = scanId, .projectId = projectId, .timestamp = static_cast<uint64_t>(now)});
 
-    // Sleep to simulate scan runtime and issue discovery
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     if (stopToken.stop_requested())
         return;
@@ -442,22 +446,12 @@ void FakeClientApi::simulateScan(ScanId scanId, ProjectId projectId, std::stop_t
         .status = IssueStatus::Open,
         .owner = "Sanket"};
 
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        issues_[projectId].push_back(simIssue);
-
-        auto projIt = projects_.find(projectId);
-        if (projIt != projects_.end()) {
-            projIt->second.totalIssues++;
-        }
-    }
-
+    // Publish IssueFound event (this automatically saves to SQLite DB)
     eventBus_.publish(IssueFound{.scanId = scanId,
                                  .projectId = projectId,
                                  .issue = simIssue,
                                  .timestamp = static_cast<uint64_t>(now)});
 
-    // Sleep to simulate scan finalization
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     if (stopToken.stop_requested())
         return;
@@ -466,23 +460,7 @@ void FakeClientApi::simulateScan(ScanId scanId, ProjectId projectId, std::stop_t
                        std::chrono::system_clock::now().time_since_epoch())
                        .count();
 
-    // 3. Complete the scan
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto scanIt = scans_.find(scanId);
-        if (scanIt != scans_.end()) {
-            scanIt->second.status = "completed";
-            scanIt->second.endTime = static_cast<uint64_t>(endTime);
-        }
-
-        auto projIt = projects_.find(projectId);
-        if (projIt != projects_.end()) {
-            projIt->second.status = "active";
-            // Slightly improve quality to reflect "cleanup analysis completed"
-            projIt->second.quality = std::min(100.0, projIt->second.quality + 0.5);
-        }
-    }
-
+    // 3. Publish ScanCompleted event (this updates status and recalculates quality scorecard in DB)
     eventBus_.publish(ScanCompleted{.scanId = scanId,
                                     .projectId = projectId,
                                     .timestamp = static_cast<uint64_t>(endTime),
@@ -494,13 +472,7 @@ Expected<std::vector<Recommendation>, Error> FakeClientApi::GetRecommendations(
     const ProjectId& projectId)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = projects_.find(projectId);
-    if (it == projects_.end()) {
-        return Unexpected<Error>(Error{.message = "Project ID not found", .code = 404});
-    }
-
-    return recommendations_[projectId];
+    return db_->GetRecommendations(projectId);
 }
 
 }  // namespace sentinel

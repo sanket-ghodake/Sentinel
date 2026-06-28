@@ -1,82 +1,88 @@
 # Sentinel Product Roadmap & Sprints
 
-**Title:** Product Roadmap & Sprints (formerly after_spec_004)
-**Version:** 1.0
+**Version:** 2.0
 **Status:** Approved
-**Author:** Lead PM / CTO
+**Author:** Product Director / CTO
 
 ---
 
-## 1. Roadmap Overview
+## 1. Roadmap Strategy: Maturity Levels
 
-Sentinel is built as an **engineering knowledge platform**, not just a collection of static analysis wrappers. To ensure design decisions are validated early by developers and architects, the roadmap is divided into ten distinct sequential phases.
+Sentinel is built as an **Engineering Experience Platform (EEP)** rather than a single-client desktop tool. To reflect this, our roadmap is structured around **Product Maturity Levels** instead of raw screen implementations:
+
+- **Level 0 — Product Foundation (Completed):** Vision, Object Model, design system, interactive desktop prototype, mock client.
+- **Level 1 — Sentinel Core (Active Sprint):** Git tracking, SQLite local persistence, codebase dashboard, workspaces.
+- **Level 2 — Analyzer Platform:** compilation database loader (`compile_commands.json`), Plugin SDK, clang-tidy/cppcheck providers.
+- **Level 3 — Developer Workflow:** Investigation dashboard, commit helper, verification build runner, rollback.
+- **Level 4 — Quality Platform:** Module health scorecards, dependency graph, release readiness checks.
+- **Level 5 — Team Features:** Shared profiles, PR summaries, CI integrations.
+- **Level 6 — Enterprise:** Org compliance rule packs, audit log histories, role access permissions.
+
+For the full detailed blueprints, indexes, and structures, refer to the [Sentinel Design Bible](file:///home/sanket/Desktop/Sanket/Sentinel/sentinel-design/00-product/sentinel-design-bible.md).
 
 ---
 
-## 2. Milestone Sprints
+## 2. Engineering Execution Sequence
 
-### Phase 1: Product Design & Clickable Prototype (Weeks 1-2)
+All core platform items are built in the following order to ensure stability and clean boundaries:
 
-- **Goal:** Validate screen flow, layouts, and navigation without writing backend code.
-- **Deliverables:**
-  - Figma component system (SDS).
-  - High-fidelity click-through prototype.
-  - User journeys validation (Open project, run scan, preview fix, install plugin).
-  - Sign-off from 10-15 native developers.
+```text
+1. Repository Initialization ✔
+2. Dev Environment Config (Docker, Devcontainer) ✔
+3. Build System (CMake setup) ✔
+4. Design System Tokens (SDS) ✔
+5. Pure C++ Domain Object Model ✔
+6. In-Process Event Bus dispatcher ✔
+7. Public APIs JSON-RPC schema contracts ✔
+8. Headless Fake Data Client service ✔
+9. Desktop Qt Window Shell (QWebEngineView container) ✔
+10. Global Shell Navigation layout ✔
+11. Local mock data payload generators ✔
+12. Shared UI Component library (Sidebar, Inspector, etc.) ✔
+13. Home Workspace View (Today's Focus, Health metrics) ✔
+14. Codebase Workspace View (Module Dependency tree) ✔
+15. Unified Issues Queue & Filter view ✔
+16. Universal Inspector Sidebar (Contextual information drawer) ✔
+17. Settings & Configuration interfaces (Profile selector) ✔
+18. SQLite Local Database persistence (Phase 7 - Active)
+19. Dynamic analyzer plugin loading SDK (Phase 8)
+20. Compilation database support (`compile_commands.json` parser)
+21. Clang-Tidy provider plugin (Phase 9)
+22. Cppcheck provider plugin (Phase 8)
+23. Dynamic scanning event subscriber loop
+24. Inline code diff visual execution
+25. Git commit assistant & staging integrations
+26. Custom Quality report exports (SARIF, HTML, JSON)
+27. Rule profile sharing packages (JSON import/export)
+28. Headless CLI Wrapper reporting tool
+29. VS Code client extension wrapper
+30. Deployment pipeline builder (AppImage)
+```
 
-### Phase 2: Core Domain Model Design (Weeks 2-3)
+---
 
-- **Goal:** Define compile-time types, namespaces, and standard objects in C++20.
-- **Deliverables:**
-  - Struct declarations for Workspace, Project, Scan, Issue, Rule, and QualitySnapshot.
-  - In-process event loop and dispatcher architecture.
+## 3. Current Sprints (Level 1)
 
-### Phase 3: Public API Design (Week 3)
+### Sprint 1.1: Local Database & Caching (Current)
 
-- **Goal:** Establish standard contracts for all frontend clients.
-- **Deliverables:**
-  - JSON-RPC 2.0 schemas over local IPC boundaries.
-  - Client endpoints: `OpenProject()`, `RunScan()`, `GetIssues()`, `ApplyFix()`.
+- **Goal:** Add persistence to the C++ headless core.
+- **Tasks:**
+  - Initialize SQLite schema representing projects, history, and scanning snapshots.
+  - Implement cached indexing of symbols and issues.
+  - Write event subscribers to persist scans as they occur.
 
-### Phase 4: Frontend Component Library (Weeks 3-4)
+### Sprint 1.2: Git Workspace Tracking
 
-- **Goal:** Construct UI building blocks using the React design system.
-- **Deliverables:**
-  - Reusable widgets: `IssueCard`, `QualityCard`, `DiffViewer`, `Inspector`.
+- **Goal:** Detect Git changes and identify scopes for scan execution.
+- **Tasks:**
+  - Query git status from core service.
+  - Map altered files to projects and modules in the active workspace view.
 
-### Phase 5: Fake Data Backend (Week 4)
+---
 
-- **Goal:** Create a mock service provider yielding static objects.
-- **Deliverables:**
-  - Fake Project structures, simulated scans, and test reports database.
+## 4. Milestone Gates & Verification
 
-### Phase 6: Desktop MVP (Weeks 4-5)
+Each major release level is subjected to human-centered testing:
 
-- **Goal:** Assemble the Qt shell and React application.
-- **Deliverables:**
-  - Functional front-end loading and displaying fake project metrics.
-  - Working inspector, workspace tree navigation, and mock autofix previews.
-
-### Phase 7: Real Quality Engine (Weeks 5-6)
-
-- **Goal:** Swap out simulated data with real index calculations.
-- **Deliverables:**
-  - Database adapters, cache indexing, event dispatchers.
-
-### Phase 8: Plugin SDK & Analyzer Providers (Week 6)
-
-- **Goal:** Wrap static analyzers in isolated plugins.
-- **Deliverables:**
-  - `IAnalyzer` interface bindings, dynamic library loading wrappers.
-
-### Phase 9: LLVM & Clang-Tidy Integration (Weeks 6-7)
-
-- **Goal:** Read live compiler setups and compilation databases.
-- **Deliverables:**
-  - Live parser for `compile_commands.json` and clang-tidy scanner executor.
-
-### Phase 10: VS Code Extension & CLI Wrapper (Week 8)
-
-- **Goal:** Ship alternative interface clients.
-- **Deliverables:**
-  - VS Code json-rpc client extension and CLI reporting tools.
+- **Alpha Gate:** Run real scanning on live repositories, verifying clang-tidy outputs are accurately represented as core objects in under 5 seconds.
+- **Beta Gate:** Daily dogfooding by 10-15 native developers, checking git flow and commit assist pipelines.
