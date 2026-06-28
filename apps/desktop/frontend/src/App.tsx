@@ -3,11 +3,11 @@ import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { Statusbar } from './components/Statusbar';
 import { Inspector } from './components/Inspector';
-import { IssueCard } from './components/IssueCard';
 import { DiffViewer } from './components/DiffViewer';
 import { SearchModal } from './components/SearchModal';
 import { CommandPalette } from './components/CommandPalette';
 import { HomeWorkspace } from './components/HomeWorkspace';
+import { AnalyzeWorkspace } from './components/AnalyzeWorkspace';
 import { MockClient } from './services/mockClient';
 import { QtBridgeClient } from './services/qtBridgeClient';
 import type { InspectorObject } from './components/Inspector';
@@ -19,7 +19,7 @@ import type {
   ScanCompletedEvent,
   ClientApi,
 } from './services/clientApi';
-import { FileCode, Folder, ToggleLeft, ToggleRight, Search } from 'lucide-react';
+import { FileCode, Folder, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const isQt = typeof window.qt !== 'undefined';
 const client: ClientApi = isQt ? new QtBridgeClient() : new MockClient();
@@ -52,10 +52,6 @@ function App() {
   // Scanning state
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-
-  // Filter for Analyze Workspace
-  const [severityFilter, setSeverityFilter] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Load projects initially
   useEffect(() => {
@@ -651,213 +647,18 @@ function App() {
         );
 
       case 'analyze': {
-        // Filter issues based on active filter and local search query
-        const filteredIssues = issues.filter((i) => {
-          const matchesSeverity =
-            severityFilter === 'ALL' || i.severity.toUpperCase() === severityFilter;
-          const matchesSearch =
-            searchQuery === '' ||
-            i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            i.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            i.location.fileId.toLowerCase().includes(searchQuery.toLowerCase());
-          return matchesSeverity && matchesSearch;
-        });
-
         return (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr',
-              gap: 'var(--sds-space-24)',
-              flex: 1,
-              minHeight: 0,
-            }}
-          >
-            {/* Issue List */}
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--sds-space-16)',
-                overflowY: 'auto',
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-                >
-                  <h3>Issues Queue ({filteredIssues.length})</h3>
-                  {/* Severity Filter pills */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '4px',
-                      backgroundColor: 'rgba(0,0,0,0.2)',
-                      padding: '3px',
-                      borderRadius: 'var(--sds-radius-md)',
-                      border: '1px solid var(--sds-border)',
-                    }}
-                  >
-                    {['ALL', 'CRITICAL', 'MEDIUM', 'LOW'].map((sev) => (
-                      <button
-                        key={sev}
-                        onClick={() => setSeverityFilter(sev)}
-                        style={{
-                          padding: '4px 8px',
-                          border: 'none',
-                          borderRadius: 'var(--sds-radius-sm)',
-                          fontSize: '11px',
-                          fontWeight: 500,
-                          backgroundColor:
-                            severityFilter === sev ? 'var(--sds-surface-active)' : 'transparent',
-                          color:
-                            severityFilter === sev
-                              ? 'var(--sds-text-heading)'
-                              : 'var(--sds-text-muted)',
-                          cursor: 'pointer',
-                          transition: 'all var(--sds-transition-fast)',
-                        }}
-                      >
-                        {sev}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Local search input for Ctrl+F */}
-                <div style={{ position: 'relative' }}>
-                  <Search
-                    size={14}
-                    color="var(--sds-text-muted)"
-                    style={{
-                      position: 'absolute',
-                      left: '10px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                    }}
-                  />
-                  <input
-                    id="local-search-input"
-                    type="text"
-                    placeholder="Filter issues in workspace (Ctrl+F)..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'rgba(0, 0, 0, 0.15)',
-                      border: '1px solid var(--sds-border)',
-                      borderRadius: 'var(--sds-radius-md)',
-                      padding: '6px 12px 6px 30px',
-                      fontSize: '12px',
-                      color: 'var(--sds-text-heading)',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}>
-                {filteredIssues.map((issue) => (
-                  <IssueCard
-                    key={issue.id}
-                    issue={issue}
-                    isSelected={selectedIssueId === issue.id}
-                    onSelect={() => {
-                      setSelectedIssueId(issue.id);
-                      setInspectorObject({ type: 'issue', data: issue });
-                    }}
-                    onApplyFix={handleApplyFix}
-                    isApplying={false}
-                    onNavigateToImprove={() => {
-                      setSelectedIssueId(issue.id);
-                      setActiveWorkspace('improve');
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Code Snippet Viewer */}
-            <div
-              className="sds-card"
-              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-            >
-              {selectedIssue ? (
-                <>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <FileCode size={16} color="var(--sds-primary)" />
-                      <span
-                        style={{
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          color: 'var(--sds-text-heading)',
-                        }}
-                      >
-                        {selectedIssue.location.fileId}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
-                      Line {selectedIssue.location.line}
-                    </span>
-                  </div>
-                  {/* Fake Code Viewer panel */}
-                  <div
-                    style={{
-                      flex: 1,
-                      backgroundColor: '#07080b',
-                      border: '1px solid var(--sds-border)',
-                      borderRadius: 'var(--sds-radius-md)',
-                      padding: 'var(--sds-space-16)',
-                      fontFamily: 'var(--sds-font-mono)',
-                      fontSize: '12px',
-                      color: '#a1a0a5',
-                      lineHeight: '1.6',
-                      overflowY: 'auto',
-                      position: 'relative',
-                    }}
-                  >
-                    <div>1: #include "core/fake_data/FakeClientApi.h"</div>
-                    <div>2: #include &lt;chrono&gt;</div>
-                    <div>...</div>
-                    <div
-                      style={{
-                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                        borderLeft: '3px solid var(--sds-danger)',
-                        marginLeft: '-16px',
-                        marginRight: '-16px',
-                        paddingLeft: '13px',
-                      }}
-                    >
-                      {selectedIssue.location.line}:{' '}
-                      {selectedIssue.fix?.actions[0]?.preview.split('\n')[2] ||
-                        'std::string query = "...";'}
-                    </div>
-                    <div>{selectedIssue.location.line + 1}: // Additional code lines</div>
-                    <div>{selectedIssue.location.line + 2}: return res;</div>
-                  </div>
-                </>
-              ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100%',
-                    color: 'var(--sds-text-muted)',
-                  }}
-                >
-                  No issue selected to view file content.
-                </div>
-              )}
-            </div>
-          </div>
+          <AnalyzeWorkspace
+            activeProject={activeProject}
+            issues={issues}
+            selectedIssueId={selectedIssueId}
+            setSelectedIssueId={setSelectedIssueId}
+            setInspectorObject={setInspectorObject}
+            onApplyFix={handleApplyFix}
+            isScanning={isScanning}
+            onRunScan={handleRunScan}
+            setActiveWorkspace={setActiveWorkspace}
+          />
         );
       }
 

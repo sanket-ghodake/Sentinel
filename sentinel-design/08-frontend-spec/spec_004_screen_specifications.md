@@ -69,15 +69,20 @@ Status Bar: [Scan State Indicator] | [Running Background Tasks] | [C++20 Compile
 
 ---
 
-## 3. Analyze Workspace
+## 3. Analyze Workspace & Investigation Mode
 
-- **Purpose:** Answer: **"What issues currently exist in my project, and where are they?"**
-- **Layout Grid:** Two-panel split (Left: issue list queue with severity filters; Right: file code viewer with highlighted annotations).
-- **SDS Components:** `IssueCard`, `CodeViewer`, `SeverityTag`.
+- **Purpose:** Answer: **"Why does this issue exist, how does it affect the project, and can I safely fix it?"**
+- **Layout Grid:** Three-column grid wrapper:
+  - Center Workspace Pane: Hosts the 8 core sections (Readiness Hero, Priorities, Issue Categories, Smart Filters, Issue List, Smart Explanation, Related Issues, Recommended Actions).
+  - Center Investigation Mode Pane: Transformed call graph, editor, and git history workspace.
+  - Right Inspector Panel: Dynamic tabbed info panel (Overview, Explanation, History, References, Diff, Documentation, Raw Analyzer).
+- **SDS Components:** `ReadinessHero`, `PrioritiesQueue`, `IssueCategoryGrid`, `SmartFiltersBar`, `IssueMiniCard`, `InvestigationCallGraph`, `ConfidenceMeterBadge`, `InspectorTabGroup`.
 - **User Interactions:**
-  - Selecting an issue in the queue scrolls the code viewer to the exact line.
-  - Right-clicking a diagnostic line opens a context menu to ignore the rule or check documentation.
-- **Required APIs:** `GetIssueQueue()`, `GetFileContent(FilePath)`.
+  - Double-clicking or pressing `E` on an issue card swaps the center workspace to Investigation Mode.
+  - Hovering issue cards reveals quick actions (Preview, Explain, Ignore, Bookmark, Open IDE).
+  - Clicking a category card collapses the workspace into a scoped domain drilldown view.
+  - Key bindings: `J` (Next), `K` (Previous), `E` (Explain), `P` (Preview), `A` (Apply), `I` (Ignore).
+- **Required APIs:** `GetIssueQueue()`, `GetFileContent(FilePath)`, `ApplyAutofix(IssueId)`, `IgnoreIssue(IssueId, Reason)`, `GetCallGraph(IssueId)`, `GetGitMetadata(IssueId)`.
 
 ---
 
