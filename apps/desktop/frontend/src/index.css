@@ -1,0 +1,317 @@
+/* Sentinel Design System (SDS) Core Stylesheet */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Design Tokens Scale (Dark Mode by default for sleek look) */
+  --sds-bg: #0b0c10;
+  --sds-surface: #12141c;
+  --sds-surface-hover: #1b1e2a;
+  --sds-surface-active: #222635;
+  --sds-primary: #6366f1; /* Indigo / Cyber Blue */
+  --sds-primary-hover: #4f46e5;
+  --sds-secondary: #475569;
+  --sds-border: #1f2433;
+  --sds-border-hover: #2e354a;
+  --sds-text: #94a3b8;
+  --sds-text-heading: #f8fafc;
+  --sds-text-muted: #64748b;
+
+  /* Semantic Colors */
+  --sds-success: #10b981; /* Emerald Green */
+  --sds-success-bg: rgba(16, 185, 129, 0.1);
+  --sds-warning: #f59e0b; /* Amber Orange */
+  --sds-warning-bg: rgba(245, 158, 11, 0.1);
+  --sds-danger: #ef4444; /* Rose Red */
+  --sds-danger-bg: rgba(239, 68, 68, 0.1);
+  --sds-info: #0ea5e9; /* Info Blue */
+  --sds-info-bg: rgba(14, 165, 233, 0.1);
+
+  /* Spacing Scale */
+  --sds-space-4: 4px;
+  --sds-space-8: 8px;
+  --sds-space-12: 12px;
+  --sds-space-16: 16px;
+  --sds-space-24: 24px;
+  --sds-space-32: 32px;
+  --sds-space-48: 48px;
+  --sds-space-64: 64px;
+
+  /* Border Radii */
+  --sds-radius-sm: 4px;
+  --sds-radius-md: 8px;
+  --sds-radius-lg: 12px;
+  --sds-radius-pill: 9999px;
+
+  /* Typography Hierarchy */
+  --sds-font-sans:
+    'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --sds-font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --sds-font-size-display: 32px;
+  --sds-font-size-h1: 24px;
+  --sds-font-size-h2: 20px;
+  --sds-font-size-h3: 16px;
+  --sds-font-size-body: 14px;
+  --sds-font-size-caption: 12px;
+  --sds-font-size-code: 13px;
+
+  /* Shadows */
+  --sds-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --sds-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --sds-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  --sds-shadow-inset: inset 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+
+  /* Animation transitions */
+  --sds-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sds-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light theme overrides (can be toggled by adding class .light-theme to body/html) */
+.light-theme {
+  --sds-bg: #f8fafc;
+  --sds-surface: #ffffff;
+  --sds-surface-hover: #f1f5f9;
+  --sds-surface-active: #e2e8f0;
+  --sds-primary: #4f46e5;
+  --sds-primary-hover: #3730a3;
+  --sds-secondary: #64748b;
+  --sds-border: #e2e8f0;
+  --sds-border-hover: #cbd5e1;
+  --sds-text: #475569;
+  --sds-text-heading: #0f172a;
+  --sds-text-muted: #94a3b8;
+
+  --sds-success-bg: rgba(16, 185, 129, 0.05);
+  --sds-warning-bg: rgba(245, 158, 11, 0.05);
+  --sds-danger-bg: rgba(239, 68, 68, 0.05);
+  --sds-info-bg: rgba(14, 165, 233, 0.05);
+
+  --sds-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --sds-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --sds-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--sds-font-sans);
+  font-size: var(--sds-font-size-body);
+  background-color: var(--sds-bg);
+  color: var(--sds-text);
+  line-height: 1.5;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Base Headings styling */
+h1 {
+  font-size: var(--sds-font-size-h1);
+  font-weight: 600;
+  color: var(--sds-text-heading);
+}
+
+h2 {
+  font-size: var(--sds-font-size-h2);
+  font-weight: 500;
+  color: var(--sds-text-heading);
+}
+
+h3 {
+  font-size: var(--sds-font-size-h3);
+  font-weight: 500;
+  color: var(--sds-text-heading);
+}
+
+code {
+  font-family: var(--sds-font-mono);
+  font-size: var(--sds-font-size-code);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: var(--sds-radius-sm);
+  border: 1px solid var(--sds-border);
+}
+
+/* Glassmorphism card utility */
+.sds-card {
+  background-color: var(--sds-surface);
+  border: 1px solid var(--sds-border);
+  border-radius: var(--sds-radius-lg);
+  padding: var(--sds-space-24);
+  box-shadow: var(--sds-shadow-md);
+  transition:
+    border-color var(--sds-transition-fast),
+    background-color var(--sds-transition-fast);
+}
+
+.sds-card:hover {
+  border-color: var(--sds-border-hover);
+  background-color: var(--sds-surface-hover);
+}
+
+/* Reusable custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sds-border);
+  border-radius: var(--sds-radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sds-border-hover);
+}
+
+/* App layout structures */
+.sds-shell {
+  display: grid;
+  grid-template-rows: 56px 1fr 28px;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--sds-bg);
+}
+
+.sds-main-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sds-workspace {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--sds-space-32);
+  background-color: var(--sds-bg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sds-space-24);
+}
+
+/* Action Button styling */
+.sds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sds-space-8);
+  font-family: var(--sds-font-sans);
+  font-size: var(--sds-font-size-body);
+  font-weight: 500;
+  padding: var(--sds-space-8) var(--sds-space-16);
+  border-radius: var(--sds-radius-md);
+  cursor: pointer;
+  transition: all var(--sds-transition-fast);
+  border: 1px solid transparent;
+  outline: none;
+}
+
+.sds-btn-primary {
+  background-color: var(--sds-primary);
+  color: #ffffff;
+}
+
+.sds-btn-primary:hover {
+  background-color: var(--sds-primary-hover);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.sds-btn-primary:disabled {
+  background-color: var(--sds-secondary);
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.sds-btn-secondary {
+  background-color: var(--sds-surface);
+  border-color: var(--sds-border);
+  color: var(--sds-text-heading);
+}
+
+.sds-btn-secondary:hover {
+  background-color: var(--sds-surface-hover);
+  border-color: var(--sds-border-hover);
+}
+
+.sds-btn-danger {
+  background-color: var(--sds-danger-bg);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: var(--sds-danger);
+}
+
+.sds-btn-danger:hover {
+  background-color: var(--sds-danger);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.sds-btn-ghost {
+  background-color: transparent;
+  color: var(--sds-text);
+}
+
+.sds-btn-ghost:hover {
+  background-color: var(--sds-surface-hover);
+  color: var(--sds-text-heading);
+}
+
+.sds-btn-link {
+  background-color: transparent;
+  color: var(--sds-primary);
+  padding: 0;
+  border-radius: 0;
+}
+
+.sds-btn-link:hover {
+  text-decoration: underline;
+  color: var(--sds-primary-hover);
+}
+
+/* Badge styles */
+.sds-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--sds-space-8);
+  font-size: var(--sds-font-size-caption);
+  font-weight: 500;
+  border-radius: var(--sds-radius-pill);
+  border: 1px solid transparent;
+}
+
+.sds-badge-success {
+  background-color: var(--sds-success-bg);
+  color: var(--sds-success);
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.sds-badge-warning {
+  background-color: var(--sds-warning-bg);
+  color: var(--sds-warning);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.sds-badge-danger {
+  background-color: var(--sds-danger-bg);
+  color: var(--sds-danger);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.sds-badge-info {
+  background-color: var(--sds-info-bg);
+  color: var(--sds-info);
+  border-color: rgba(14, 165, 233, 0.2);
+}

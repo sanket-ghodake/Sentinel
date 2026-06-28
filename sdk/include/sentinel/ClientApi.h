@@ -19,6 +19,7 @@ public:
     virtual Expected<std::vector<Issue>, Error> GetIssues(const ProjectId& projectId) = 0;
     virtual Expected<bool, Error> ApplyAutofix(const IssueId& issueId) = 0;
     virtual Expected<Project, Error> GetProjectSummary(const ProjectId& projectId) = 0;
+    virtual Expected<std::vector<Project>, Error> GetProjects() = 0;
 };
 
 }  // namespace sentinel

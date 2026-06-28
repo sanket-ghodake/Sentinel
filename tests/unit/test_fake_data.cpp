@@ -132,6 +132,29 @@ void TestRunScanAsynchronous()
     assert(api.GetProjectSummary(pId).value().status == "active");
 }
 
+void TestGetProjects()
+{
+    std::cout << "[Test] Running GetProjects tests..." << std::endl;
+    sentinel::EventBus bus;
+    sentinel::FakeClientApi api(bus);
+
+    auto projectsRes = api.GetProjects();
+    assert(projectsRes.has_value());
+    assert(projectsRes.value().size() == 2);
+
+    bool hasSentinel = false;
+    bool hasDashboard = false;
+    for (const auto& proj : projectsRes.value()) {
+        if (proj.id == sentinel::ProjectId("proj-sentinel")) {
+            hasSentinel = true;
+        } else if (proj.id == sentinel::ProjectId("proj-dashboard")) {
+            hasDashboard = true;
+        }
+    }
+    assert(hasSentinel);
+    assert(hasDashboard);
+}
+
 int main()
 {
     std::cout << "========================================" << std::endl;
@@ -141,6 +164,7 @@ int main()
     TestOpenProject();
     TestGetIssuesAndSummary();
     TestApplyAutofix();
+    TestGetProjects();
     TestRunScanAsynchronous();
 
     std::cout << "========================================" << std::endl;

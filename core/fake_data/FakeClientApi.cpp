@@ -257,6 +257,19 @@ Expected<Project, Error> FakeClientApi::GetProjectSummary(const ProjectId& proje
     return it->second;
 }
 
+Expected<std::vector<Project>, Error> FakeClientApi::GetProjects()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    std::vector<Project> result;
+    result.reserve(projects_.size());
+    for (const auto& [id, project] : projects_) {
+        result.push_back(project);
+    }
+
+    return result;
+}
+
 void FakeClientApi::simulateScan(ScanId scanId, ProjectId projectId, std::stop_token stopToken)
 {
     // Sleep to simulate scan startup delay

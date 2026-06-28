@@ -22,6 +22,7 @@ public:
     Expected<std::vector<Issue>, Error> GetIssues(const ProjectId& projectId) override;
     Expected<bool, Error> ApplyAutofix(const IssueId& issueId) override;
     Expected<Project, Error> GetProjectSummary(const ProjectId& projectId) override;
+    Expected<std::vector<Project>, Error> GetProjects() override;
 
 private:
     void initializeMockData();

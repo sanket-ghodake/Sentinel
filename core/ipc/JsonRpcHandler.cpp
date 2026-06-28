@@ -118,6 +118,18 @@ std::string JsonRpcHandler::handleRequest(const std::string& requestStr)
             } else {
                 return makeErrorResponse(id, res.error().code, res.error().message).serialize();
             }
+        } else if (method == "GetProjects") {
+            auto res = api_.GetProjects();
+            if (res.has_value()) {
+                std::vector<Json> projsJson;
+                projsJson.reserve(res.value().size());
+                for (const auto& proj : res.value()) {
+                    projsJson.push_back(serialize(proj));
+                }
+                return makeSuccessResponse(id, Json(projsJson)).serialize();
+            } else {
+                return makeErrorResponse(id, res.error().code, res.error().message).serialize();
+            }
         } else {
             return makeErrorResponse(id, -32601, "Method not found").serialize();
         }
