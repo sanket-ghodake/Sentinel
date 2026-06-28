@@ -11,6 +11,7 @@ set(CMAKE_AUTOUIC ON)
 
 # Find Qt6 components
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets WebEngineWidgets WebChannel)
+find_package(SQLite3 REQUIRED)
 
 # Include directories
 include_directories(
@@ -24,6 +25,7 @@ set(CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/event_bus/EventBus.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/fake_data/FakeClientApi.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../core/ipc/JsonRpcHandler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../core/storage/Database.cpp
 )
 
 # Main Executable
@@ -39,4 +41,5 @@ target_link_libraries(sentinel-desktop PRIVATE
     Qt6::Widgets
     Qt6::WebEngineWidgets
     Qt6::WebChannel
+    SQLite::SQLite3
 )
