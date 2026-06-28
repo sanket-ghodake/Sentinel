@@ -24,9 +24,9 @@ Global Toolbar: [Logo] | [Project Switcher dropdown] | [Search input] | [Notific
 --------------------------------------------------------------------------------
 Left Navigation  | Center Workspace Area                     | Right Inspector
 - Home           |                                           | (Dynamic Context)
-- Projects       |                                           |
+- Codebase       |                                           |
 - Analyze        |                                           |
-- Fix            |                                           |
+- Improve        |                                           |
 - Insights       |                                           |
 - Extensions     |                                           |
 - Settings       |                                           |
@@ -53,18 +53,19 @@ Status Bar: [Scan State Indicator] | [Running Background Tasks] | [C++20 Compile
 
 ---
 
-## 2. Projects Workspace
+## 2. Codebase Workspace
 
-- **Purpose:** Answer: **"Help me understand this codebase's architecture and modules."**
-- **Layout Grid:** Split layout (Left: interactive Folder/Module tree; Right: interactive codebase graph).
-- **SDS Components:** `ModuleTree`, `CodebaseDependencyGraph`, `FileBadge`.
+- **Purpose:** Answer the core developer question: **"Help me understand this codebase."**
+- **Layout Grid:** Interchangeable 5-perspective layout in the center canvas.
+- **SDS Components:** `ProjectHero`, `RepositoryOverview`, `ModuleExplorer`, `FolderTree`, `CodebaseDependencyGraph`, `QualityHeatmap`, `RecentActivity`.
 - **User Interactions:**
-  - Double-clicking a file in the tree opens the file viewer.
-  - Clicking a node in the dependency graph displays module properties in the right-side Inspector.
+  - Toggling between **Structure**, **Architecture**, **Quality**, **Git**, and **Performance** perspectives overlaying different metrics and graph highlights.
+  - Clicking a module, folder, or file updates the right-side Inspector with context-aware metrics and dependency lists.
+  - Double-clicking a file in the tree opens the file viewer in the Analyze Workspace or external IDE.
 - **Dynamic States:**
-  - _Loading:_ Renders skeleton loaders mapping the file tree structure.
-  - _Empty:_ "No modules found. Please verify your folder contains valid native source code."
-- **Required APIs:** `GetFilesystemTree()`, `GetModuleDependencyGraph()`.
+  - _Loading:_ Displays progress indicator sequence: "Reading Git ➔ Mapping Folders ➔ Parsing Modules ➔ Computing Dependencies".
+  - _Empty:_ "No codebase opened. Use Open Folder to initialize a repository."
+- **Required APIs:** `GetFilesystemTree()`, `GetModuleDependencyGraph()`, `GetHistoricalSnapshots()`.
 
 ---
 
@@ -80,7 +81,7 @@ Status Bar: [Scan State Indicator] | [Running Background Tasks] | [C++20 Compile
 
 ---
 
-## 4. Fix Workspace
+## 4. Improve Workspace
 
 - **Purpose:** Answer: **"Help me safely improve my code."**
 - **Layout Grid:** Main diff comparative layout (Left: original file lines; Right: proposed modifications).

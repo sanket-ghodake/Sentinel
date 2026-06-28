@@ -47,12 +47,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       },
     },
     {
-      id: 'cmd-projects',
-      title: 'Navigate to Projects Explorer',
+      id: 'cmd-codebase',
+      title: 'Navigate to Codebase Workspace',
       category: 'Commands',
-      subtitle: 'Open repository structural map',
+      subtitle: 'Open codebase perspective maps',
       action: () => {
-        onNavigateToWorkspace('projects');
+        onNavigateToWorkspace('codebase');
         onClose();
       },
     },
@@ -124,7 +124,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       category: 'Files' as const,
       subtitle: 'apps/desktop/frontend/src/App.tsx',
       action: () => {
-        onNavigateToWorkspace('projects');
+        onNavigateToWorkspace('codebase');
         onClose();
       },
     },
@@ -134,7 +134,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       category: 'Files' as const,
       subtitle: 'core/fake_data/FakeClientApi.cpp',
       action: () => {
-        onNavigateToWorkspace('projects');
+        onNavigateToWorkspace('codebase');
         onClose();
       },
     },

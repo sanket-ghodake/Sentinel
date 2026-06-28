@@ -125,9 +125,9 @@ The Desktop application must follow a stable, standardized layout.
 - **Top Toolbar:** Global window controls, active project switcher, search, notifications, profile.
 - **Left Navigation:** Fixed switching between stable workspaces:
   - **Home:** "What should I do today?" (Health summary, recommended actions, branch state).
-  - **Projects:** "Help me understand my project architecture." (Module graphs, file tree, dependencies).
+  - **Codebase:** "Help me understand this codebase." (5 perspectives: Structure, Architecture, Quality, Git, Performance).
   - **Analyze:** "What needs my attention?" (Issues queue, Pull Request changes, diffs).
-  - **Fix:** "Help me improve my project." (Safe fixes, manual tasks, preview diffs).
+  - **Improve:** "Help me safely improve my code." (Safe fixes, manual tasks, preview diffs).
   - **Insights:** "How has quality changed?" (Historical quality curves, compliance reports, heatmaps).
   - **Extensions:** "Manage capabilities." (Installed plugins, rule packs, marketplace).
   - **Settings:** "Customize Sentinel." (Analyzer rules, profiles, configurations).

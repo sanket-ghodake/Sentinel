@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const menuItems = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'projects', label: 'Projects', icon: FolderGit2 },
+    { id: 'codebase', label: 'Codebase', icon: FolderGit2 },
     {
       id: 'analyze',
       label: 'Analyze',

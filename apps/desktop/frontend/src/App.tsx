@@ -26,7 +26,7 @@ const client: ClientApi = isQt ? new QtBridgeClient() : new MockClient();
 
 const workspaceTitles: { [key: string]: string } = {
   home: 'Home Dashboard',
-  projects: 'Projects Explorer',
+  codebase: 'Codebase Workspace',
   analyze: 'Issues Queue',
   improve: 'Improvement Workspace',
   insights: 'Quality Insights',
@@ -105,7 +105,7 @@ function App() {
   useEffect(() => {
     if (activeWorkspace === 'home') {
       setInspectorObject({ type: 'home_context', data: {} });
-    } else if (activeWorkspace === 'projects') {
+    } else if (activeWorkspace === 'codebase') {
       const activeProj = projects.find((p) => p.id === activeProjectId);
       if (activeProj) {
         setInspectorObject({ type: 'project', data: activeProj });
@@ -299,7 +299,7 @@ function App() {
         );
       }
 
-      case 'projects':
+      case 'codebase':
         return (
           <div
             style={{
