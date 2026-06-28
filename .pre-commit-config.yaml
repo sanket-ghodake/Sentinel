@@ -1,0 +1,105 @@
+default_language_version:
+  python: python3
+  node: 20.0.0
+
+repos:
+  # System-installed formatters & linters (run instantly via Docker pre-installed binaries)
+  - repo: local
+    hooks:
+      - id: trailing-whitespace
+        name: trim trailing whitespace
+        entry: trailing-whitespace-fixer
+        language: system
+        types: [text]
+
+      - id: end-of-file-fixer
+        name: fix end of files
+        entry: end-of-file-fixer
+        language: system
+        types: [text]
+
+      - id: check-yaml
+        name: check yaml
+        entry: check-yaml
+        language: system
+        types: [yaml]
+
+      - id: check-json
+        name: check json
+        entry: check-json
+        language: system
+        types: [json]
+
+      - id: check-merge-conflict
+        name: check for merge conflicts
+        entry: check-merge-conflict
+        language: system
+        types: [text]
+
+      - id: check-added-large-files
+        name: check for added large files
+        entry: check-added-large-files
+        args: ['--maxkb=500']
+        language: system
+
+      - id: detect-private-key
+        name: detect private key
+        entry: detect-private-key
+        language: system
+        types: [text]
+
+      - id: clang-format
+        name: Clang Format (C++20)
+        entry: clang-format -style=file -i
+        language: system
+        types_or: [c++, c]
+
+      - id: eslint
+        name: ESLint (JS/TS)
+        entry: eslint --fix
+        language: system
+        types_or: [javascript, ts, jsx, tsx]
+        files: \.(js|jsx|ts|tsx)$
+
+      - id: prettier
+        name: Prettier Formatter
+        entry: prettier --write
+        language: system
+        types_or: [javascript, ts, jsx, tsx, css, html, json, yaml, markdown]
+        exclude: ^(package-lock\.json|node_modules/)
+
+      - id: shellcheck
+        name: ShellCheck (Shell Linter)
+        entry: shellcheck
+        language: system
+        types: [shell]
+
+      - id: shfmt
+        name: shfmt (Shell Formatter)
+        entry: shfmt -w -i 2 -ci
+        language: system
+        types: [shell]
+
+      - id: hadolint
+        name: Hadolint (Dockerfile Linter)
+        entry: hadolint
+        language: system
+        types: [dockerfile]
+
+      - id: markdownlint
+        name: MarkdownLint
+        entry: markdownlint --fix
+        language: system
+        types: [markdown]
+
+      - id: check-sqlite-files
+        name: Block SQLite Database Files
+        entry: SQLite database file detected. Never commit binary databases or journal files (.db, .sqlite, .sqlite3, .db-journal) to the repo.
+        language: fail
+        files: \.(db|sqlite|sqlite3|db-journal)$
+
+      - id: sqlite-injection-check
+        name: SQLite Injection Check (C++ Security)
+        entry: python3 scripts/check-sqlite-security.py
+        language: system
+        types_or: [c++, c]

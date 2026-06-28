@@ -1,0 +1,13 @@
+# Sentinel AI Agent Rules & Workspace Configuration (Cline)
+
+This file defines the strict instructions that all AI agents (including Cline, Roo-Cline, and Devins) must adhere to when operating in this repository.
+
+Please refer to the main rules specified in `.cursorrules` in the workspace root for complete details.
+
+## Core Rules Summary:
+1. **Docker Only & No Self-Commits:** No local compilation or installation. Execute all commands inside Docker container boundaries. Do not commit changes by yourself (leave staged for human review).
+2. **Context Reduction (RTK & Graphify):**
+   - **Graphify:** Set up/update the graph without API keys via `graphify update .`. Use `graphify query "<question>"`, `graphify path "<node1>" "<node2>"`, or `graphify explain "<node>"` instead of traversing files raw. Run `graphify update .` after code edits.
+   - **RTK Proxying:** Prefix commands with `rtk` (e.g. `rtk ls`, `rtk tree`, `rtk find`, `rtk grep`, `rtk diff`, `rtk read`, `rtk err`, `rtk test`) to compress output and conserve token context.
+3. **Architecture Contract:** Adhere strictly to RFC-004 (Sentinel AI Engineering Contract). Verify directory mappings, domain structures, and interface isolation.
+4. **Design First:** Document design proposals, tradeoffs, and extensibility hooks, and receive human sign-off before committing code changes.

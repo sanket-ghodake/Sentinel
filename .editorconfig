@@ -1,0 +1,30 @@
+# EditorConfig configurations for Sentinel
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+indent_style = space
+
+# C++ files (Google C++ Style Indent of 4 spaces)
+[*.{cpp,h,hpp}]
+indent_size = 4
+
+# Python files (PEP 8 standard of 4 spaces)
+[*.py]
+indent_size = 4
+
+# Shell scripts (Standard 4 spaces)
+[*.sh]
+indent_size = 4
+
+# Frontend / JS / TS / CSS / HTML / JSON / YAML (Standard 2 spaces)
+[*.{js,ts,jsx,tsx,css,html,json,yaml,yml}]
+indent_size = 2
+
+# Markdown rules
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2

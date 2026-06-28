@@ -1,0 +1,44 @@
+# Sentinel AI Agent Rules & Workspace Configuration
+
+This file defines the strict instructions that all AI agents (including Antigravity, Cursor, Copilot, and Cline) must adhere to when operating in this repository.
+
+---
+
+## 1. Environment Constraints: Docker-Only Execution
+* **Strict Host Cleanliness:** Do not compile, format, test, or run any code directly on the host system. All toolchains (GCC, Clang, CMake, LLVM, Qt, Node.js, npm, Conan) are run inside Docker containers.
+* **Command Routing:** When you need to run compilation, static analysis, unit tests, or package installation, you must execute the commands through the docker container context (e.g., `docker compose exec backend ...` or `docker run ...`).
+* **Dependency Installation:** Do not run host-level package managers (e.g., `apt`, `brew`, `pacman`, `pip`, `npm`, `pnpm`). All updates to dependencies must be made by editing the respective `Dockerfile` inside `docker/` and rebuilding the container.
+* **Commit Prevention:** Do not commit changes by yourself. AI agents must stage changes and leave them for the developer to review and commit.
+
+---
+
+## 2. Context Optimization: Graphify & RTK Workflows
+* **Minimize Raw Tree Parsing:** Do not read or parse raw source code trees recursively. Always query or generate a structured map of the system first.
+* **Graphify Usage (No API Key Required):**
+  - Run `graphify update .` to initialize or update the AST codebase graph without an LLM API key (AST-only parser, offline, no API cost).
+  - Use `graphify query "<question>"` (search codebase), `graphify path "<node1>" "<node2>"` (relationships), or `graphify explain "<node>"` (focused concept detail) to get scoped subgraphs.
+  - Always run `graphify update .` after creating, deleting, or modifying source files to keep the graph in sync.
+* **RTK (Repo Context Compression) Commands:**
+  - Prefix standard commands with `rtk` to reduce token usage and filter output:
+    - Use `rtk ls` instead of `ls`
+    - Use `rtk tree` instead of `tree`
+    - Use `rtk find` instead of `find`
+    - Use `rtk grep` instead of `grep`
+    - Use `rtk diff` instead of `git diff`
+    - Use `rtk read <file>` instead of reading files raw
+    - Use `rtk err <command>` or `rtk test <command>` to run build/tests and only output errors/failures.
+* **Reasoning Level:** Always reason over high-level component diagrams and interfaces. Refrain from loading large numbers of code files into the context window simultaneously.
+
+---
+
+## 3. Strict Compliance with the AI Engineering Contract (RFC-004)
+* **Design Approval Gate:** Before generating code or modifying architectural files, you must present a design explanation, list tradeoffs, identify extension points, and wait for human approval.
+* **Domain Object Mapping:** All classes, tables, APIs, and UI fields must align strictly with the domain objects defined in the Object Model (`sentinel-design/00-product/object-model.md`).
+* **Modular Monolith Boundaries:** Do not introduce microservices or HTTP-based IPC between internal core modules. Communication occurs in-process via interfaces and domain events.
+* **Directory Hygiene:** Never create directories outside the permitted root structure. Banned names: `helpers`, `utils`, `misc`, `backup`, `temp`, `old`.
+
+---
+
+## 4. IDE & Editor Integration Settings
+* **VS Code Devcontainer:** Always locate and respect settings in `.devcontainer/devcontainer.json`. Work inside the container container mount.
+* **Linting & Formatting:** C++ formatting must be delegated to the dockerized `clang-format`. Frontend formatting is handled by ESLint/Prettier inside the frontend container.

@@ -1,0 +1,78 @@
+# Sentinel Gitignore Configuration
+
+# Local Agent Tracking
+antigravity_roadmap.md
+
+# Pruned Workspace Patterns
+**/build/
+**/bin/
+**/lib/
+**/out/
+**/dist/
+
+# CMake / Build systems
+CMakeCache.txt
+CMakeFiles/
+CMakeSettings.json
+Makefile
+cmake_install.cmake
+*.cmake
+compile_commands.json
+
+# C++ Compiler outputs
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+*.suo
+*.user
+
+# Package Managers
+.conan/
+vcpkg_installed/
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Python envs & cache
+__pycache__/
+*.pyc
+.venv/
+env/
+venv/
+
+# Database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# IDE and Editor configs
+.idea/
+.vs/
+*.suo
+*.user
+*.sln
+*.vcxproj
+*.filters
+.vscode/*.log
+.vscode/tasks.json
+.vscode/launch.json
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+# Temp/Cache directories
+.cache/
+.npm/
+.pnpm-store/
+logs/
+*.log
+graphify-out/

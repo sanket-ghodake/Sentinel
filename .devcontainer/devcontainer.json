@@ -1,0 +1,25 @@
+{
+  "name": "Sentinel Dev Environment",
+  "dockerComposeFile": ["../docker/docker-compose.dev.yml"],
+  "service": "backend",
+  "workspaceFolder": "/workspace/sentinel",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "C_Cpp.clang_format_path": "/usr/bin/clang-format",
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+        "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"]
+      },
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "remoteUser": "developer"
+}

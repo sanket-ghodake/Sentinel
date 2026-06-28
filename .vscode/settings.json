@@ -1,0 +1,15 @@
+{
+  "search.exclude": {
+    "**/third_party": true,
+    "**/build": true,
+    "**/.git": true,
+    "**/docker/base": true
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/build": true
+  },
+  "editor.formatOnSave": true,
+  "C_Cpp.clang_format_style": "file"
+}

@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentinel Home Prototype</title>
+    <style>
+      :root {
+        --bg: #f6f7f8;
+        --surface: #ffffff;
+        --surface-2: #f0f3f5;
+        --ink: #182026;
+        --muted: #64717c;
+        --soft: #8a96a0;
+        --border: #dce2e7;
+        --border-strong: #c9d2d9;
+        --green: #188455;
+        --green-soft: #e7f4ee;
+        --blue: #246bdb;
+        --blue-soft: #e8f0ff;
+        --orange: #b45f06;
+        --orange-soft: #fff2df;
+        --red: #ba2f32;
+        --red-soft: #ffe9e9;
+        --shadow: 0 8px 24px rgba(22, 31, 39, 0.08);
+        --radius: 8px;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        color: var(--ink);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: 56px minmax(0, 1fr) 28px;
+        min-height: 100vh;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 232px minmax(260px, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.92);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(14px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: 0;
+      }
+
+      .mark {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: var(--ink);
+        color: white;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .project-switcher {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .project-name {
+        color: var(--ink);
+        font-weight: 650;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        min-width: 240px;
+        max-width: 680px;
+        height: 36px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-2);
+        color: var(--soft);
+        font-size: 13px;
+      }
+
+      .toolbar-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .icon-button {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .icon-button:hover {
+        border-color: var(--border);
+        background: var(--surface-2);
+        color: var(--ink);
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 216px minmax(520px, 1fr) 336px;
+        min-height: 0;
+      }
+
+      .sidebar {
+        padding: 16px 12px;
+        background: #fbfcfd;
+        border-right: 1px solid var(--border);
+      }
+
+      .nav {
+        display: grid;
+        gap: 4px;
+      }
+
+      .nav button {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        height: 38px;
+        padding: 0 12px;
+        border-radius: var(--radius);
+        background: transparent;
+        color: var(--muted);
+        text-align: left;
+        font-size: 14px;
+        font-weight: 560;
+      }
+
+      .nav button.active,
+      .nav button:hover {
+        background: var(--surface-2);
+        color: var(--ink);
+      }
+
+      .sidebar-section {
+        margin-top: 24px;
+        padding: 0 12px;
+      }
+
+      .section-label {
+        margin-bottom: 10px;
+        color: var(--soft);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .profile-pill {
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 9px;
+        border-radius: 999px;
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .content {
+        min-width: 0;
+        overflow: auto;
+        padding: 24px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(280px, 1.4fr) minmax(240px, 0.8fr);
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .panel,
+      .task,
+      .metric,
+      .activity-row {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: 0 1px 0 rgba(20, 28, 35, 0.03);
+      }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .continue-panel {
+        display: grid;
+        min-height: 214px;
+        align-content: space-between;
+        background:
+          linear-gradient(120deg, rgba(36, 107, 219, 0.08), rgba(24, 132, 85, 0.07)), var(--surface);
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        max-width: 680px;
+        font-size: 31px;
+        line-height: 1.13;
+      }
+
+      h2 {
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      h3 {
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .subtle {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 20px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 0 13px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .button.primary {
+        background: var(--ink);
+        color: white;
+      }
+
+      .button.secondary {
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--ink);
+      }
+
+      .button.ghost {
+        background: transparent;
+        color: var(--blue);
+      }
+
+      .commit-panel {
+        display: grid;
+        gap: 16px;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--green-soft);
+        color: var(--green);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .status-badge.review {
+        background: var(--orange-soft);
+        color: var(--orange);
+      }
+
+      .status-badge.blocked {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .commit-score {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+      }
+
+      .score {
+        font-size: 44px;
+        line-height: 0.9;
+        font-weight: 800;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(130px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .metric {
+        min-height: 106px;
+        padding: 15px;
+      }
+
+      .metric-value {
+        margin-top: 12px;
+        font-size: 28px;
+        line-height: 1;
+        font-weight: 800;
+      }
+
+      .metric.good .metric-value {
+        color: var(--green);
+      }
+
+      .metric.info .metric-value {
+        color: var(--blue);
+      }
+
+      .metric.warn .metric-value {
+        color: var(--orange);
+      }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(360px, 1.05fr) minmax(280px, 0.95fr);
+        gap: 16px;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .task-list,
+      .activity-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .task {
+        width: 100%;
+        padding: 14px;
+        text-align: left;
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease,
+          transform 160ms ease;
+      }
+
+      .task:hover,
+      .task.selected {
+        border-color: var(--border-strong);
+        box-shadow: var(--shadow);
+        transform: translateY(-1px);
+      }
+
+      .task-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        height: 23px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .chip.safe {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .chip.manual {
+        background: var(--orange-soft);
+        color: var(--orange);
+      }
+
+      .chip.ci {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .activity-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 48px;
+        padding: 0 12px;
+      }
+
+      .chart {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        align-items: end;
+        gap: 8px;
+        height: 150px;
+        padding: 12px 4px 0;
+      }
+
+      .bar {
+        min-height: 24px;
+        border-radius: 6px 6px 0 0;
+        background: var(--blue);
+        opacity: 0.16;
+      }
+
+      .bar.current {
+        background: var(--green);
+        opacity: 0.9;
+      }
+
+      .inspector {
+        min-width: 0;
+        overflow: auto;
+        padding: 16px;
+        background: #fbfcfd;
+        border-left: 1px solid var(--border);
+      }
+
+      .inspector-panel {
+        display: grid;
+        gap: 14px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+
+      .detail-block {
+        display: grid;
+        gap: 5px;
+      }
+
+      .detail-label {
+        color: var(--soft);
+        font-size: 11px;
+        font-weight: 760;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .diff {
+        display: none;
+        margin-top: 2px;
+        padding: 12px;
+        border-radius: var(--radius);
+        background: #101820;
+        color: #dbe8ef;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        overflow: auto;
+      }
+
+      .diff.visible {
+        display: block;
+      }
+
+      .statusbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 12px;
+        border-top: 1px solid var(--border);
+        background: #fbfcfd;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .scan-progress {
+        display: none;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .scan-progress.visible {
+        display: flex;
+      }
+
+      .spinner {
+        width: 12px;
+        height: 12px;
+        border: 2px solid var(--border-strong);
+        border-top-color: var(--blue);
+        border-radius: 50%;
+        animation: spin 700ms linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (max-width: 1100px) {
+        .shell {
+          grid-template-columns: 176px minmax(420px, 1fr);
+        }
+
+        .inspector {
+          display: none;
+        }
+
+        .grid {
+          grid-template-columns: repeat(2, minmax(140px, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        .toolbar {
+          grid-template-columns: 1fr auto;
+        }
+
+        .project-switcher,
+        .search {
+          display: none;
+        }
+
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .content {
+          padding: 16px;
+        }
+
+        .hero,
+        .workspace-grid {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 25px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="toolbar">
+        <div class="brand">
+          <div class="mark">S</div>
+          <span>Sentinel</span>
+        </div>
+        <div class="project-switcher">
+          <span>Project</span>
+          <span class="project-name">Flight Controller</span>
+          <span>feature/sensor-fusion</span>
+        </div>
+        <div class="toolbar-actions">
+          <div class="search">Search projects, tasks, rules</div>
+          <button class="icon-button" title="Notifications">N</button>
+          <button class="icon-button" title="Profile">P</button>
+        </div>
+      </header>
+
+      <main class="shell">
+        <aside class="sidebar">
+          <nav class="nav" aria-label="Main navigation">
+            <button class="active">Home</button>
+            <button>Projects</button>
+            <button>Analyze</button>
+            <button>Fix</button>
+            <button>Insights</button>
+            <button>Extensions</button>
+            <button>Settings</button>
+          </nav>
+
+          <div class="sidebar-section">
+            <div class="section-label">Profile</div>
+            <span class="profile-pill">Embedded Strict</span>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="section-label">Compliance</div>
+            <p class="subtle">MISRA 98%</p>
+            <p class="subtle">Company Rules Pass</p>
+          </div>
+        </aside>
+
+        <section class="content">
+          <div class="hero">
+            <section class="panel continue-panel">
+              <div>
+                <p class="eyebrow">Good morning</p>
+                <h1>Continue Flight Controller with confidence.</h1>
+                <p class="subtle" style="margin-top: 12px">
+                  Yesterday you fixed 12 issues. Today's priority is reviewing 3 memory tasks.
+                </p>
+              </div>
+              <div class="hero-actions">
+                <button class="button primary" id="continueButton">Continue</button>
+                <button class="button secondary" id="scanButton">Run Quick Scan</button>
+              </div>
+            </section>
+
+            <section class="panel commit-panel">
+              <div>
+                <span class="status-badge" id="commitBadge">Ready to commit</span>
+              </div>
+              <div class="commit-score">
+                <div class="score" id="qualityScore">95</div>
+                <div>
+                  <h2>Project health</h2>
+                  <p class="subtle" id="qualityTrend">+2% over the last 7 scans</p>
+                </div>
+              </div>
+              <p class="subtle" id="commitSummary">
+                0 blocking issues. 8 safe fixes are available if you want a cleaner diff.
+              </p>
+            </section>
+          </div>
+
+          <section class="grid" aria-label="Project summary">
+            <div class="metric good">
+              <h3>Blocking</h3>
+              <div class="metric-value" id="blockingCount">0</div>
+              <p class="subtle">release blockers</p>
+            </div>
+            <div class="metric info">
+              <h3>Changed Files</h3>
+              <div class="metric-value">6</div>
+              <p class="subtle">since last scan</p>
+            </div>
+            <div class="metric warn">
+              <h3>Suggestions</h3>
+              <div class="metric-value" id="suggestionCount">12</div>
+              <p class="subtle">worth reviewing</p>
+            </div>
+            <div class="metric good">
+              <h3>Safe Fixes</h3>
+              <div class="metric-value" id="safeFixCount">8</div>
+              <p class="subtle">one-click tasks</p>
+            </div>
+          </section>
+
+          <div class="workspace-grid">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h2>Recommended Actions</h2>
+                  <p class="subtle">Estimated time: 6 minutes</p>
+                </div>
+                <button class="button ghost" id="completeAll">Apply safe</button>
+              </div>
+              <div class="task-list" id="taskList"></div>
+            </section>
+
+            <div>
+              <section class="panel" style="margin-bottom: 16px">
+                <div class="panel-header">
+                  <div>
+                    <h2>Recent Activity</h2>
+                    <p class="subtle">Progress across recent scans</p>
+                  </div>
+                </div>
+                <div class="activity-list">
+                  <div class="activity-row">
+                    <span class="subtle">Fixed 12 issues yesterday</span>
+                    <span class="chip safe">Progress</span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="subtle">Quality improved from 92% to 95%</span>
+                    <span class="chip safe">+3%</span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="subtle">clang-tidy plugin updated</span>
+                    <span class="chip ci">Plugin</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="panel-header">
+                  <div>
+                    <h2>Quality Trend</h2>
+                    <p class="subtle">Last 7 scans</p>
+                  </div>
+                  <span class="chip safe">Rising</span>
+                </div>
+                <div class="chart" aria-hidden="true">
+                  <div class="bar" style="height: 56%"></div>
+                  <div class="bar" style="height: 52%"></div>
+                  <div class="bar" style="height: 61%"></div>
+                  <div class="bar" style="height: 68%"></div>
+                  <div class="bar" style="height: 74%"></div>
+                  <div class="bar" style="height: 81%"></div>
+                  <div class="bar current" style="height: 90%"></div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <aside class="inspector">
+          <section class="inspector-panel">
+            <div>
+              <p class="eyebrow">Inspector</p>
+              <h2 id="inspectorTitle">Apply 8 safe formatting fixes</h2>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Why it matters</div>
+              <p class="subtle" id="inspectorWhy">
+                Keeps the current branch clean before review and reduces avoidable diff noise.
+              </p>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Impact</div>
+              <p class="subtle" id="inspectorImpact">Cleaner diff across 6 changed files.</p>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Confidence</div>
+              <p class="subtle" id="inspectorConfidence">
+                High. Generated by clang-format and reversible before commit.
+              </p>
+            </div>
+            <div class="detail-block">
+              <div class="detail-label">Files</div>
+              <p class="subtle" id="inspectorFiles">
+                src/control/pid.cpp, src/sensors/imu.cpp, include/flight/state.hpp
+              </p>
+            </div>
+            <div class="hero-actions">
+              <button class="button primary" id="primaryAction">Preview Fix</button>
+              <button class="button secondary" id="secondaryAction">Open Analyze</button>
+            </div>
+            <pre class="diff" id="diffPreview">
+- if(value==nullptr){return false;}
++ if (value == nullptr) {
++   return false;
++ }</pre>
+          </section>
+        </aside>
+      </main>
+
+      <footer class="statusbar">
+        <span>Flight Controller | feature/sensor-fusion | Offline</span>
+        <span class="scan-progress" id="scanProgress"
+          ><span class="spinner"></span>Scanning changed files</span
+        >
+        <span id="lastScan">Last scan 12 minutes ago</span>
+      </footer>
+    </div>
+
+    <script>
+      const tasks = [
+        {
+          title: 'Apply 8 safe formatting fixes',
+          kind: 'Safe',
+          chip: 'safe',
+          time: '30 seconds',
+          impact: 'Cleaner diff',
+          why: 'Keeps the current branch clean before review and reduces avoidable diff noise.',
+          confidence: 'High. Generated by clang-format and reversible before commit.',
+          files: 'src/control/pid.cpp, src/sensors/imu.cpp, include/flight/state.hpp',
+          diff: '- if(value==nullptr){return false;}\\n+ if (value == nullptr) {\\n+   return false;\\n+ }',
+        },
+        {
+          title: 'Review possible null dereference',
+          kind: 'Manual',
+          chip: 'manual',
+          time: '3 minutes',
+          impact: 'Release confidence',
+          why: 'A sensor packet can reach the controller without a validity check after a reconnect.',
+          confidence:
+            'Medium. The path is possible in analysis and should be confirmed against runtime behavior.',
+          files: 'src/sensors/imu.cpp, src/control/fusion.cpp',
+          diff: '- fusion.update(packet->sample);\\n+ if (packet != nullptr) {\\n+   fusion.update(packet->sample);\\n+ }',
+        },
+        {
+          title: 'Export SARIF for CI',
+          kind: 'CI',
+          chip: 'ci',
+          time: '15 seconds',
+          impact: 'Team visibility',
+          why: 'Publishes the current local quality state so the team sees the same result in automation.',
+          confidence: 'High. Export uses the current scan cache and does not modify project files.',
+          files: 'sentinel-report.sarif',
+          diff: '{\\n  "version": "2.1.0",\\n  "runs": ["Flight Controller"]\\n}',
+        },
+      ];
+
+      let selectedIndex = 0;
+      let safeFixes = 8;
+      let suggestions = 12;
+      let quality = 95;
+
+      const taskList = document.getElementById('taskList');
+      const inspectorTitle = document.getElementById('inspectorTitle');
+      const inspectorWhy = document.getElementById('inspectorWhy');
+      const inspectorImpact = document.getElementById('inspectorImpact');
+      const inspectorConfidence = document.getElementById('inspectorConfidence');
+      const inspectorFiles = document.getElementById('inspectorFiles');
+      const diffPreview = document.getElementById('diffPreview');
+      const primaryAction = document.getElementById('primaryAction');
+      const scanButton = document.getElementById('scanButton');
+      const scanProgress = document.getElementById('scanProgress');
+      const lastScan = document.getElementById('lastScan');
+      const safeFixCount = document.getElementById('safeFixCount');
+      const suggestionCount = document.getElementById('suggestionCount');
+      const qualityScore = document.getElementById('qualityScore');
+      const commitBadge = document.getElementById('commitBadge');
+      const commitSummary = document.getElementById('commitSummary');
+
+      function renderTasks() {
+        taskList.innerHTML = '';
+        tasks.forEach((task, index) => {
+          const item = document.createElement('button');
+          item.className = 'task' + (index === selectedIndex ? ' selected' : '');
+          item.innerHTML = `
+          <div class="task-top">
+            <div>
+              <h3>${task.title}</h3>
+              <p class="subtle" style="margin-top: 5px;">Impact: ${task.impact}</p>
+            </div>
+            <span class="chip ${task.chip}">${task.kind}</span>
+          </div>
+          <div class="task-meta">
+            <span class="chip">${task.time}</span>
+            <span class="chip">${task.impact}</span>
+          </div>
+        `;
+          item.addEventListener('click', () => selectTask(index));
+          taskList.appendChild(item);
+        });
+      }
+
+      function selectTask(index) {
+        selectedIndex = index;
+        const task = tasks[index];
+        inspectorTitle.textContent = task.title;
+        inspectorWhy.textContent = task.why;
+        inspectorImpact.textContent = task.impact;
+        inspectorConfidence.textContent = task.confidence;
+        inspectorFiles.textContent = task.files;
+        diffPreview.textContent = task.diff;
+        diffPreview.classList.remove('visible');
+        primaryAction.textContent = task.kind === 'Safe' ? 'Preview Fix' : 'Open Analyze';
+        renderTasks();
+      }
+
+      function updateSummary() {
+        safeFixCount.textContent = safeFixes;
+        suggestionCount.textContent = suggestions;
+        qualityScore.textContent = quality;
+        if (safeFixes === 0) {
+          commitBadge.textContent = 'Ready to commit';
+          commitBadge.className = 'status-badge';
+          commitSummary.textContent = '0 blocking issues. Branch is clean and ready for review.';
+        } else {
+          commitBadge.textContent = 'Ready to commit';
+          commitBadge.className = 'status-badge';
+          commitSummary.textContent =
+            '0 blocking issues. ' +
+            safeFixes +
+            ' safe fixes are available if you want a cleaner diff.';
+        }
+      }
+
+      primaryAction.addEventListener('click', () => {
+        if (tasks[selectedIndex].kind === 'Safe' && !diffPreview.classList.contains('visible')) {
+          diffPreview.classList.add('visible');
+          primaryAction.textContent = 'Apply Fix';
+          return;
+        }
+
+        if (tasks[selectedIndex].kind === 'Safe') {
+          safeFixes = 0;
+          quality = 96;
+          tasks.splice(selectedIndex, 1);
+          selectedIndex = 0;
+          renderTasks();
+          selectTask(0);
+          updateSummary();
+        }
+      });
+
+      document.getElementById('completeAll').addEventListener('click', () => {
+        safeFixes = 0;
+        quality = 96;
+        const safeIndex = tasks.findIndex((task) => task.kind === 'Safe');
+        if (safeIndex >= 0) {
+          tasks.splice(safeIndex, 1);
+        }
+        selectedIndex = 0;
+        renderTasks();
+        selectTask(0);
+        updateSummary();
+      });
+
+      scanButton.addEventListener('click', () => {
+        scanButton.disabled = true;
+        scanButton.textContent = 'Scanning';
+        scanProgress.classList.add('visible');
+        lastScan.textContent = 'Scan running';
+
+        setTimeout(() => {
+          suggestions = Math.max(10, suggestions - 1);
+          scanProgress.classList.remove('visible');
+          scanButton.disabled = false;
+          scanButton.textContent = 'Run Quick Scan';
+          lastScan.textContent = 'Last scan just now';
+          updateSummary();
+        }, 1600);
+      });
+
+      document.getElementById('continueButton').addEventListener('click', () => {
+        selectTask(1);
+      });
+
+      renderTasks();
+      selectTask(0);
+      updateSummary();
+    </script>
+  </body>
+</html>
