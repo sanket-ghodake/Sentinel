@@ -81,6 +81,16 @@ struct Issue
     IssueStatus status = IssueStatus::Open;
     std::string owner;
 
+    // V2 properties appended at the end to preserve designated initializer order
+    std::string repository;
+    std::string file;
+    int line = 0;
+    int column = 0;
+    std::string message;
+    std::string evidence;
+    std::vector<std::string> references;
+    std::vector<std::string> tags;
+
     auto operator<=>(const Issue&) const = default;
 };
 
@@ -91,10 +101,15 @@ struct Rule
     std::string category;
     std::string description;
     Severity severity = Severity::Medium;
-    std::string source;
+    std::string runner;             // V2 runner field (formerly source)
+    std::string documentation;      // V2 documentation URL or content
+    std::vector<std::string> tags;  // V2 metadata tags
+    bool supportsAutofix = false;   // V2 flag
+    bool supportsPreview = false;   // V2 flag
     bool enabled = true;
     std::string configuration;
     std::vector<std::string> references;
+    std::string source;  // V1 Compatibility source (maps to runner)
 
     auto operator<=>(const Rule&) const = default;
 };

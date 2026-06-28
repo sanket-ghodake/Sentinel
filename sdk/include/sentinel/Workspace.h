@@ -53,9 +53,9 @@ struct Module
     auto operator<=>(const Module&) const = default;
 };
 
-struct Project
+struct Repository
 {
-    ProjectId id;
+    RepositoryId id;
     std::string name;
     std::string path;
     std::string language;
@@ -72,8 +72,9 @@ struct Project
     int totalLines = 0;
     int totalIssues = 0;
 
-    auto operator<=>(const Project&) const = default;
+    auto operator<=>(const Repository&) const = default;
 };
+using Project = Repository;
 
 struct Workspace
 {

@@ -10,7 +10,19 @@ services:
     volumes:
       - ..:/workspace/sentinel
       # Cache node_modules in a volume to avoid slow host mounting syncs
-      - /workspace/sentinel/apps/desktop/frontend/node_modules
+      - /workspace/sentinel/ui/node_modules
     environment:
       - NODE_ENV=development
     restart: always
+
+  desktop-dev:
+    build:
+      context: ..
+      dockerfile: docker/desktop/Dockerfile
+    image: sentinel-desktop-dev:latest
+    volumes:
+      - ..:/workspace/sentinel
+    environment:
+      - NODE_ENV=development
+    tty: true
+    stdin_open: true

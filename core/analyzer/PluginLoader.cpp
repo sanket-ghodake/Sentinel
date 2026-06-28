@@ -5,16 +5,16 @@
 
 namespace sentinel {
 
-LoadedPlugin::LoadedPlugin(void* handle, IAnalyzer* analyzer, void (*destroyFunc)(IAnalyzer*))
-    : handle_(handle), analyzer_(analyzer), destroyFunc_(destroyFunc)
+LoadedPlugin::LoadedPlugin(void* handle, IPlugin* plugin, void (*destroyFunc)(IPlugin*))
+    : handle_(handle), plugin_(plugin), destroyFunc_(destroyFunc)
 {
 }
 
 LoadedPlugin::~LoadedPlugin()
 {
-    if (analyzer_ && destroyFunc_) {
-        destroyFunc_(analyzer_);
-        analyzer_ = nullptr;
+    if (plugin_ && destroyFunc_) {
+        destroyFunc_(plugin_);
+        plugin_ = nullptr;
     }
     if (handle_) {
         dlclose(handle_);
@@ -23,36 +23,36 @@ LoadedPlugin::~LoadedPlugin()
 }
 
 LoadedPlugin::LoadedPlugin(LoadedPlugin&& other) noexcept
-    : handle_(other.handle_), analyzer_(other.analyzer_), destroyFunc_(other.destroyFunc_)
+    : handle_(other.handle_), plugin_(other.plugin_), destroyFunc_(other.destroyFunc_)
 {
     other.handle_ = nullptr;
-    other.analyzer_ = nullptr;
+    other.plugin_ = nullptr;
     other.destroyFunc_ = nullptr;
 }
 
 LoadedPlugin& LoadedPlugin::operator=(LoadedPlugin&& other) noexcept
 {
     if (this != &other) {
-        if (analyzer_ && destroyFunc_) {
-            destroyFunc_(analyzer_);
+        if (plugin_ && destroyFunc_) {
+            destroyFunc_(plugin_);
         }
         if (handle_) {
             dlclose(handle_);
         }
         handle_ = other.handle_;
-        analyzer_ = other.analyzer_;
+        plugin_ = other.plugin_;
         destroyFunc_ = other.destroyFunc_;
 
         other.handle_ = nullptr;
-        other.analyzer_ = nullptr;
+        other.plugin_ = nullptr;
         other.destroyFunc_ = nullptr;
     }
     return *this;
 }
 
-IAnalyzer* LoadedPlugin::GetAnalyzer() const
+IPlugin* LoadedPlugin::GetPlugin() const
 {
-    return analyzer_;
+    return plugin_;
 }
 
 Expected<std::unique_ptr<LoadedPlugin>, Error> PluginLoader::LoadPlugin(const std::string& soPath)
@@ -69,31 +69,31 @@ Expected<std::unique_ptr<LoadedPlugin>, Error> PluginLoader::LoadPlugin(const st
     }
 
     // Load factory functions
-    auto createFunc = reinterpret_cast<IAnalyzer* (*)()>(dlsym(handle, "CreateAnalyzer"));
+    auto createFunc = reinterpret_cast<IPlugin* (*)()>(dlsym(handle, "CreatePlugin"));
     const char* dlsymErr = dlerror();
     if (dlsymErr || !createFunc) {
         dlclose(handle);
-        std::string errStr = dlsymErr ? dlsymErr : "CreateAnalyzer symbol not found";
+        std::string errStr = dlsymErr ? dlsymErr : "CreatePlugin symbol not found";
         return Unexpected<Error>(
-            {.message = "Failed to load CreateAnalyzer symbol: " + errStr, .code = 500});
+            {.message = "Failed to load CreatePlugin symbol: " + errStr, .code = 500});
     }
 
-    auto destroyFunc = reinterpret_cast<void (*)(IAnalyzer*)>(dlsym(handle, "DestroyAnalyzer"));
+    auto destroyFunc = reinterpret_cast<void (*)(IPlugin*)>(dlsym(handle, "DestroyPlugin"));
     dlsymErr = dlerror();
     if (dlsymErr || !destroyFunc) {
         dlclose(handle);
-        std::string errStr = dlsymErr ? dlsymErr : "DestroyAnalyzer symbol not found";
+        std::string errStr = dlsymErr ? dlsymErr : "DestroyPlugin symbol not found";
         return Unexpected<Error>(
-            {.message = "Failed to load DestroyAnalyzer symbol: " + errStr, .code = 500});
+            {.message = "Failed to load DestroyPlugin symbol: " + errStr, .code = 500});
     }
 
-    IAnalyzer* analyzer = createFunc();
-    if (!analyzer) {
+    IPlugin* plugin = createFunc();
+    if (!plugin) {
         dlclose(handle);
-        return Unexpected<Error>({.message = "CreateAnalyzer returned nullptr", .code = 500});
+        return Unexpected<Error>({.message = "CreatePlugin returned nullptr", .code = 500});
     }
 
-    return std::make_unique<LoadedPlugin>(handle, analyzer, destroyFunc);
+    return std::make_unique<LoadedPlugin>(handle, plugin, destroyFunc);
 }
 
 }  // namespace sentinel

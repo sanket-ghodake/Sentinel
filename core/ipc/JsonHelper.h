@@ -144,6 +144,25 @@ inline Json serialize(const Issue& issue)
     obj["fix"] = serialize(issue.fix);
     obj["status"] = issueStatusToString(issue.status);
     obj["owner"] = issue.owner;
+
+    // V2 properties
+    obj["repository"] = issue.repository;
+    obj["file"] = issue.file;
+    obj["line"] = issue.line;
+    obj["column"] = issue.column;
+    obj["message"] = issue.message;
+    obj["evidence"] = issue.evidence;
+    std::vector<Json> refs;
+    for (const auto& r : issue.references) {
+        refs.push_back(Json(r));
+    }
+    obj["references"] = Json(refs);
+    std::vector<Json> tags;
+    for (const auto& t : issue.tags) {
+        tags.push_back(Json(t));
+    }
+    obj["tags"] = Json(tags);
+
     return Json(obj);
 }
 
@@ -182,9 +201,9 @@ inline Json serialize(const Recommendation& rec)
 
     obj["safeAutomationLevel"] = rec.safeAutomationLevel;
 
-    // Add estimatedEffort and estimatedImpact
-    obj["estimatedEffort"] = "2 minutes";
-    obj["estimatedImpact"] = "High";
+    // Estimated effort & impact from database/V2 model
+    obj["estimatedEffort"] = rec.estimatedEffort;
+    obj["estimatedImpact"] = rec.estimatedImpact;
 
     // Preview
     std::unordered_map<std::string, Json> preview;
@@ -222,6 +241,10 @@ inline Json serialize(const Recommendation& rec)
     }
     learningMode["references"] = Json(refs);
     obj["learningMode"] = Json(learningMode);
+
+    // V2 flat properties
+    obj["v2Preview"] = rec.preview;
+    obj["rollback"] = rec.rollback;
 
     return Json(obj);
 }

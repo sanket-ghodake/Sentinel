@@ -77,6 +77,14 @@ export class MockClient implements ClientApi {
         },
         status: 'Open',
         owner: 'Sanket',
+        repository: 'proj-sentinel',
+        file: 'IpcServer.cpp',
+        line: 42,
+        column: 12,
+        message: 'SQL Injection Risk in Database Query',
+        evidence: 'sql += input_val',
+        references: ['OWASP Injection Guide'],
+        tags: ['security', 'database'],
       },
       {
         id: 'issue-unused-1',
@@ -112,6 +120,14 @@ export class MockClient implements ClientApi {
         },
         status: 'Open',
         owner: 'Sanket',
+        repository: 'proj-sentinel',
+        file: 'JsonRpcHandler.cpp',
+        line: 85,
+        column: 9,
+        message: "Unused Variable 'tempCode'",
+        evidence: 'int tempCode = 5;',
+        references: ['C++ Core Guidelines ES.2'],
+        tags: ['style', 'refactor'],
       },
     ];
 
@@ -170,6 +186,14 @@ export class MockClient implements ClientApi {
         },
         status: 'Open',
         owner: 'Sanket',
+        repository: 'proj-dashboard',
+        file: 'App.tsx',
+        line: 12,
+        column: 5,
+        message: 'Console.log Warning',
+        evidence: 'console.log(data);',
+        references: ['12-Factor App Logging'],
+        tags: ['style'],
       },
     ];
 
@@ -232,6 +256,9 @@ export class MockClient implements ClientApi {
           bestPractice: 'Always bind user inputs using parameters rather than concatenation.',
           references: ['OWASP Injection Guide', 'C++ Core Guidelines Security'],
         },
+        v2Preview:
+          '- std::string query = "SELECT * FROM users WHERE name = \'" + input_val + "\';";\n+ std::string query = "SELECT * FROM users WHERE name = ?;";',
+        rollback: true,
       },
       {
         id: 'rec-unused-1',
@@ -282,6 +309,8 @@ export class MockClient implements ClientApi {
             'Proactively remove dead variables or mark with [[maybe_unused]] if intended for debug scenarios.',
           references: ['C++ Core Guidelines ES.2'],
         },
+        v2Preview: '- int tempCode = 5;',
+        rollback: true,
       },
     ];
 
@@ -334,6 +363,8 @@ export class MockClient implements ClientApi {
           bestPractice: 'Leverage logger services instead of raw stdout console streams.',
           references: ['12-Factor App Logging guidelines'],
         },
+        v2Preview: '- console.log(data);',
+        rollback: true,
       },
     ];
 
@@ -449,6 +480,14 @@ export class MockClient implements ClientApi {
             },
             status: 'Open',
             owner: 'Sanket',
+            repository: projectId,
+            file: 'EventBus.cpp',
+            line: 5,
+            column: 1,
+            message: 'Unused Header Include',
+            evidence: '#include <iostream>',
+            references: ['C++ Core Guidelines SF.12'],
+            tags: ['style'],
           };
 
           this.issues[projectId].push(simIssue);

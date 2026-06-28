@@ -30,7 +30,7 @@ def fix_code_blocks(content):
 
 def main():
     # File lists to fix MD001, MD036, MD040
-    target_dirs = ['docs', 'sentinel-design']
+    target_dirs = ['docs']
     for target_dir in target_dirs:
         if not os.path.exists(target_dir):
             continue

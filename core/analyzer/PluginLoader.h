@@ -4,14 +4,14 @@
 #include <string>
 
 #include "sentinel/Expected.h"
-#include "sentinel/IAnalyzer.h"
+#include "sentinel/IPlugin.h"
 
 namespace sentinel {
 
 class LoadedPlugin
 {
 public:
-    LoadedPlugin(void* handle, IAnalyzer* analyzer, void (*destroyFunc)(IAnalyzer*));
+    LoadedPlugin(void* handle, IPlugin* plugin, void (*destroyFunc)(IPlugin*));
     ~LoadedPlugin();
 
     // Disable copy
@@ -22,12 +22,12 @@ public:
     LoadedPlugin(LoadedPlugin&& other) noexcept;
     LoadedPlugin& operator=(LoadedPlugin&& other) noexcept;
 
-    IAnalyzer* GetAnalyzer() const;
+    IPlugin* GetPlugin() const;
 
 private:
     void* handle_{nullptr};
-    IAnalyzer* analyzer_{nullptr};
-    void (*destroyFunc_)(IAnalyzer*){nullptr};
+    IPlugin* plugin_{nullptr};
+    void (*destroyFunc_)(IPlugin*){nullptr};
 };
 
 class PluginLoader

@@ -12,7 +12,7 @@ void TestOpenProject()
 {
     std::cout << "[Test] Running FakeClientApi::OpenProject tests..." << std::endl;
     sentinel::EventBus bus;
-    sentinel::FakeClientApi api(bus);
+    sentinel::FakeClientApi api(bus, ":memory:");
 
     // Test Open success
     auto res1 = api.OpenProject("/workspace/sentinel");
@@ -31,7 +31,7 @@ void TestGetIssuesAndSummary()
 {
     std::cout << "[Test] Running GetIssues and GetProjectSummary tests..." << std::endl;
     sentinel::EventBus bus;
-    sentinel::FakeClientApi api(bus);
+    sentinel::FakeClientApi api(bus, ":memory:");
 
     sentinel::ProjectId pId("proj-sentinel");
     auto summary = api.GetProjectSummary(pId);
@@ -48,7 +48,7 @@ void TestApplyAutofix()
 {
     std::cout << "[Test] Running ApplyAutofix tests..." << std::endl;
     sentinel::EventBus bus;
-    sentinel::FakeClientApi api(bus);
+    sentinel::FakeClientApi api(bus, ":memory:");
 
     sentinel::ProjectId pId("proj-sentinel");
     sentinel::IssueId issueId("issue-sql-1");
@@ -77,7 +77,7 @@ void TestRunScanAsynchronous()
 {
     std::cout << "[Test] Running RunScan asynchronous simulation tests..." << std::endl;
     sentinel::EventBus bus;
-    sentinel::FakeClientApi api(bus);
+    sentinel::FakeClientApi api(bus, ":memory:");
 
     sentinel::ProjectId pId("proj-sentinel");
 
@@ -136,7 +136,7 @@ void TestGetProjects()
 {
     std::cout << "[Test] Running GetProjects tests..." << std::endl;
     sentinel::EventBus bus;
-    sentinel::FakeClientApi api(bus);
+    sentinel::FakeClientApi api(bus, ":memory:");
 
     auto projectsRes = api.GetProjects();
     assert(projectsRes.has_value());
@@ -159,7 +159,7 @@ void TestGetRecommendations()
 {
     std::cout << "[Test] Running GetRecommendations tests..." << std::endl;
     sentinel::EventBus bus;
-    sentinel::FakeClientApi api(bus);
+    sentinel::FakeClientApi api(bus, ":memory:");
 
     sentinel::ProjectId pId("proj-sentinel");
     auto recsRes = api.GetRecommendations(pId);

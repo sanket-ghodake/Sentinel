@@ -44,10 +44,11 @@ struct WorkspaceTag
 };
 using WorkspaceId = TypedId<WorkspaceTag>;
 
-struct ProjectTag
+struct RepositoryTag
 {
 };
-using ProjectId = TypedId<ProjectTag>;
+using RepositoryId = TypedId<RepositoryTag>;
+using ProjectId = RepositoryId;
 
 struct ModuleTag
 {

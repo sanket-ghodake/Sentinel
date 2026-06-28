@@ -7,9 +7,9 @@
 
 namespace sentinel {
 
-FakeClientApi::FakeClientApi(EventBus& eventBus) : eventBus_(eventBus)
+FakeClientApi::FakeClientApi(EventBus& eventBus, const std::string& dbPath) : eventBus_(eventBus)
 {
-    db_ = std::make_unique<Database>("sentinel_cache.db");
+    db_ = std::make_unique<Database>(dbPath);
     if (db_->InitializeSchema()) {
         db_->BindToEventBus(eventBus_);
         initializeMockData();

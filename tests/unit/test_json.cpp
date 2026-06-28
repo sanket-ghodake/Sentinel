@@ -63,6 +63,23 @@ public:
                                .language = "TypeScript"};
         return proj;
     }
+
+    sentinel::Expected<std::vector<sentinel::Project>, sentinel::Error> GetProjects() override
+    {
+        sentinel::Project proj{.id = sentinel::ProjectId("proj-1"),
+                               .name = "Mock Project",
+                               .path = "/workspace/mock",
+                               .language = "C++"};
+        return std::vector<sentinel::Project>{proj};
+    }
+
+    sentinel::Expected<std::vector<sentinel::Recommendation>, sentinel::Error> GetRecommendations(
+        const sentinel::ProjectId& projectId) override
+    {
+        sentinel::Recommendation rec{.id = sentinel::RecommendationId("rec-1"),
+                                     .title = "Mock Rec"};
+        return std::vector<sentinel::Recommendation>{rec};
+    }
 };
 
 void TestJsonParser()

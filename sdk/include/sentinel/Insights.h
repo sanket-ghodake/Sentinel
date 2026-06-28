@@ -54,6 +54,12 @@ struct Recommendation
     std::string learningBestPractice;
     std::vector<std::string> learningReferences;
 
+    // V2 properties appended at the end to preserve designated initializer order
+    std::string estimatedEffort;  // V2: e.g., '10m'
+    std::string estimatedImpact;  // V2: e.g., 'High'
+    std::string preview;          // V2: Diff patch or code
+    bool rollback = true;         // V2: Rollback flag
+
     auto operator<=>(const Recommendation&) const = default;
 };
 

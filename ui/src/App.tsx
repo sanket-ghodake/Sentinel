@@ -473,8 +473,8 @@ function App() {
                     setInspectorObject({
                       type: 'folder',
                       data: {
-                        name: 'frontend',
-                        path: 'apps/desktop/frontend/',
+                        name: 'ui',
+                        path: 'ui/',
                         subdirsCount: 2,
                         filesCount: 8,
                       },
@@ -482,7 +482,7 @@ function App() {
                   }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
-                  <span>frontend/</span>
+                  <span>ui/</span>
                 </div>
                 <div
                   style={{
@@ -500,7 +500,7 @@ function App() {
                       type: 'file',
                       data: {
                         name: 'App.tsx',
-                        path: 'apps/desktop/frontend/src/App.tsx',
+                        path: 'ui/src/App.tsx',
                         issuesCount: 0,
                         loc: 1143,
                       },

@@ -32,6 +32,10 @@ compile_commands.json
 *.suo
 *.user
 
+# Unit test executables (extensionless)
+tests/unit/test_*
+!tests/unit/test_*.*
+
 # Package Managers
 .conan/
 vcpkg_installed/

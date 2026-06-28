@@ -15,7 +15,7 @@ namespace sentinel {
 class FakeClientApi : public IClientApi
 {
 public:
-    explicit FakeClientApi(EventBus& eventBus);
+    explicit FakeClientApi(EventBus& eventBus, const std::string& dbPath = "sentinel_cache.db");
     ~FakeClientApi() override;
 
     // IClientApi implementation

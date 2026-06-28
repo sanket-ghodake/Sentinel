@@ -18,17 +18,19 @@ void TestClangTidyPlugin(const std::string& soPath)
     assert(res.has_value());
 
     auto loaded = std::move(res.value());
-    auto* analyzer = loaded->GetAnalyzer();
-    assert(analyzer != nullptr);
+    auto* plugin = loaded->GetPlugin();
+    assert(plugin != nullptr);
 
-    assert(analyzer->GetId() == "clang-tidy");
-    assert(analyzer->GetName() == "LLVM Clang-Tidy static analyzer");
-    assert(analyzer->GetVersion() == "1.0.0");
+    auto rulePack = plugin->GetRulePack();
+    assert(rulePack != nullptr);
+    assert(rulePack->GetId() == "clang-tidy");
+    assert(rulePack->GetName() == "LLVM Clang-Tidy static analyzer");
+    assert(rulePack->GetVersion() == "1.0.0");
 
-    auto initRes = analyzer->Initialize("");
+    auto initRes = plugin->Initialize("");
     assert(initRes.has_value());
 
-    auto rulesRes = analyzer->GetSupportedRules();
+    auto rulesRes = rulePack->GetSupportedRules();
     assert(rulesRes.has_value());
     assert(rulesRes.value().size() == 3);
     assert(rulesRes.value()[0].id.value() == "clang-diagnostic-error");
@@ -37,11 +39,20 @@ void TestClangTidyPlugin(const std::string& soPath)
     std::vector<sentinel::RuleId> activeRules = {
         sentinel::RuleId("modernize-use-override"),
         sentinel::RuleId("performance-unnecessary-value-param")};
-    auto analyzeRes =
-        analyzer->Analyze(sentinel::ProjectId("test-proj"), "/workspace/test", files, activeRules);
-    assert(analyzeRes.has_value());
+
+    auto runner = plugin->GetRunner();
+    assert(runner != nullptr);
+    auto parser = plugin->GetParser();
+    assert(parser != nullptr);
+
+    auto runRes =
+        runner->Run(sentinel::ProjectId("test-proj"), "/workspace/test", files, activeRules);
+    assert(runRes.has_value());
+
+    auto parseRes = parser->Parse(runRes.value(), sentinel::ProjectId("test-proj"));
+    assert(parseRes.has_value());
     // 2 files x 2 active rules = 4 issues
-    assert(analyzeRes.value().size() == 4);
+    assert(parseRes.value().size() == 4);
 
     std::cout << "Clang-Tidy plugin test passed!" << std::endl;
 }
@@ -53,17 +64,19 @@ void TestCppcheckPlugin(const std::string& soPath)
     assert(res.has_value());
 
     auto loaded = std::move(res.value());
-    auto* analyzer = loaded->GetAnalyzer();
-    assert(analyzer != nullptr);
+    auto* plugin = loaded->GetPlugin();
+    assert(plugin != nullptr);
 
-    assert(analyzer->GetId() == "cppcheck");
-    assert(analyzer->GetName() == "Cppcheck static analyzer");
-    assert(analyzer->GetVersion() == "2.13.0");
+    auto rulePack = plugin->GetRulePack();
+    assert(rulePack != nullptr);
+    assert(rulePack->GetId() == "cppcheck");
+    assert(rulePack->GetName() == "Cppcheck static analyzer");
+    assert(rulePack->GetVersion() == "2.13.0");
 
-    auto initRes = analyzer->Initialize("");
+    auto initRes = plugin->Initialize("");
     assert(initRes.has_value());
 
-    auto rulesRes = analyzer->GetSupportedRules();
+    auto rulesRes = rulePack->GetSupportedRules();
     assert(rulesRes.has_value());
     assert(rulesRes.value().size() == 3);
     assert(rulesRes.value()[0].id.value() == "cppcheck-nullPointer");
@@ -71,11 +84,20 @@ void TestCppcheckPlugin(const std::string& soPath)
     std::vector<std::string> files = {"src/main.cpp"};
     std::vector<sentinel::RuleId> activeRules = {sentinel::RuleId("cppcheck-nullPointer"),
                                                  sentinel::RuleId("cppcheck-memleak")};
-    auto analyzeRes =
-        analyzer->Analyze(sentinel::ProjectId("test-proj"), "/workspace/test", files, activeRules);
-    assert(analyzeRes.has_value());
+
+    auto runner = plugin->GetRunner();
+    assert(runner != nullptr);
+    auto parser = plugin->GetParser();
+    assert(parser != nullptr);
+
+    auto runRes =
+        runner->Run(sentinel::ProjectId("test-proj"), "/workspace/test", files, activeRules);
+    assert(runRes.has_value());
+
+    auto parseRes = parser->Parse(runRes.value(), sentinel::ProjectId("test-proj"));
+    assert(parseRes.has_value());
     // 1 file x 2 active rules = 2 issues
-    assert(analyzeRes.value().size() == 2);
+    assert(parseRes.value().size() == 2);
 
     std::cout << "Cppcheck plugin test passed!" << std::endl;
 }

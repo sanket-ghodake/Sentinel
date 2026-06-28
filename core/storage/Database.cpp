@@ -87,8 +87,12 @@ Expected<void, Error> Database::InitializeSchema()
         "id TEXT PRIMARY KEY, "
         "scan_id TEXT NOT NULL, "
         "project_id TEXT NOT NULL, "
+        "repository TEXT, "
         "title TEXT NOT NULL, "
+        "message TEXT, "
         "description TEXT NOT NULL, "
+        "evidence TEXT, "
+        "references_json TEXT, "
         "severity INTEGER NOT NULL, "
         "confidence INTEGER NOT NULL, "
         "category TEXT NOT NULL, "
@@ -104,6 +108,7 @@ Expected<void, Error> Database::InitializeSchema()
         "fix_id TEXT, "
         "fix_description TEXT, "
         "fix_actions_json TEXT, "
+        "tags_json TEXT, "
         "FOREIGN KEY(scan_id) REFERENCES scans(id) ON DELETE CASCADE, "
         "FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE);";
     res = executeQuery(iSql);
@@ -163,6 +168,10 @@ Expected<void, Error> Database::InitializeSchema()
         "learning_rationale TEXT, "
         "learning_best_practice TEXT, "
         "learning_references_json TEXT, "
+        "estimated_effort TEXT, "
+        "estimated_impact TEXT, "
+        "preview TEXT, "
+        "rollback INTEGER DEFAULT 1, "
         "FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE);";
     res = executeQuery(rSql);
     if (!res) {
@@ -372,10 +381,11 @@ Expected<void, Error> Database::SaveIssue(const ProjectId& projectId,
     }
 
     const char* sql =
-        "INSERT OR REPLACE INTO issues (id, scan_id, project_id, title, description, severity, "
-        "confidence, category, analyzer_id, rule_id, file_path, line_number, column_number, "
-        "length, impact, status, owner, fix_id, fix_description, fix_actions_json) VALUES (?, ?, "
-        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        "INSERT OR REPLACE INTO issues (id, scan_id, project_id, repository, title, message, "
+        "description, evidence, references_json, severity, confidence, category, analyzer_id, "
+        "rule_id, file_path, line_number, column_number, length, impact, status, owner, fix_id, "
+        "fix_description, fix_actions_json, tags_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -397,26 +407,49 @@ Expected<void, Error> Database::SaveIssue(const ProjectId& projectId,
     }
     std::string actionsJsonStr = Json(jsonActions).serialize();
 
+    std::vector<Json> jsonRefs;
+    for (const auto& ref : issue.references) {
+        jsonRefs.push_back(Json(ref));
+    }
+    std::string refsJsonStr = Json(jsonRefs).serialize();
+
+    std::vector<Json> jsonTags;
+    for (const auto& tag : issue.tags) {
+        jsonTags.push_back(Json(tag));
+    }
+    std::string tagsJsonStr = Json(jsonTags).serialize();
+
+    std::string titleVal = issue.title.empty() ? issue.message : issue.title;
+    std::string messageVal = issue.message.empty() ? issue.title : issue.message;
+    std::string fileVal = issue.file.empty() ? issue.location.fileId.value() : issue.file;
+    int lineVal = issue.line == 0 ? issue.location.line : issue.line;
+    int columnVal = issue.column == 0 ? issue.location.column : issue.column;
+
     sqlite3_bind_text(stmt, 1, issue.id.value().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, scanId.value().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, projectId.value().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 4, issue.title.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 5, issue.description.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 6, static_cast<int>(issue.severity));
-    sqlite3_bind_int(stmt, 7, static_cast<int>(issue.confidence));
-    sqlite3_bind_text(stmt, 8, issue.category.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 9, issue.analyzerId.value().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 10, issue.ruleId.value().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 11, issue.location.fileId.value().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 12, issue.location.line);
-    sqlite3_bind_int(stmt, 13, issue.location.column);
-    sqlite3_bind_int(stmt, 14, issue.location.length);
-    sqlite3_bind_text(stmt, 15, issue.impact.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 16, static_cast<int>(issue.status));
-    sqlite3_bind_text(stmt, 17, issue.owner.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 18, issue.fix.id.value().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 19, issue.fix.description.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 20, actionsJsonStr.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, issue.repository.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, titleVal.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, messageVal.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, issue.description.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8, issue.evidence.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9, refsJsonStr.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 10, static_cast<int>(issue.severity));
+    sqlite3_bind_int(stmt, 11, static_cast<int>(issue.confidence));
+    sqlite3_bind_text(stmt, 12, issue.category.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 13, issue.analyzerId.value().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 14, issue.ruleId.value().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 15, fileVal.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 16, lineVal);
+    sqlite3_bind_int(stmt, 17, columnVal);
+    sqlite3_bind_int(stmt, 18, issue.location.length);
+    sqlite3_bind_text(stmt, 19, issue.impact.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 20, static_cast<int>(issue.status));
+    sqlite3_bind_text(stmt, 21, issue.owner.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 22, issue.fix.id.value().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 23, issue.fix.description.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 24, actionsJsonStr.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 25, tagsJsonStr.c_str(), -1, SQLITE_TRANSIENT);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -435,9 +468,10 @@ Expected<std::vector<Issue>, Error> Database::GetIssues(const ProjectId& project
     }
 
     const char* sql =
-        "SELECT id, title, description, severity, confidence, category, analyzer_id, rule_id, "
-        "file_path, line_number, column_number, length, impact, status, owner, fix_id, "
-        "fix_description, fix_actions_json FROM issues WHERE project_id = ?;";
+        "SELECT id, repository, title, message, description, evidence, references_json, severity, "
+        "confidence, category, analyzer_id, rule_id, file_path, line_number, column_number, "
+        "length, impact, status, owner, fix_id, fix_description, fix_actions_json, tags_json FROM "
+        "issues WHERE project_id = ?;";
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -450,38 +484,64 @@ Expected<std::vector<Issue>, Error> Database::GetIssues(const ProjectId& project
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
         Issue issue;
         issue.id = IssueId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0)));
-        issue.title = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-        issue.description = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-        issue.severity = static_cast<Severity>(sqlite3_column_int(stmt, 3));
-        issue.confidence = static_cast<Confidence>(sqlite3_column_int(stmt, 4));
-        issue.category = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-        issue.analyzerId = AnalyzerId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6)));
-        issue.ruleId = RuleId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 7)));
+        auto repo_raw = sqlite3_column_text(stmt, 1);
+        issue.repository = repo_raw ? reinterpret_cast<const char*>(repo_raw) : "";
+        issue.title = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        auto msg_raw = sqlite3_column_text(stmt, 3);
+        issue.message = msg_raw ? reinterpret_cast<const char*>(msg_raw) : "";
+        issue.description = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+        auto ev_raw = sqlite3_column_text(stmt, 5);
+        issue.evidence = ev_raw ? reinterpret_cast<const char*>(ev_raw) : "";
+
+        auto refs_json_raw = sqlite3_column_text(stmt, 6);
+        std::string refsJsonStr = refs_json_raw ? reinterpret_cast<const char*>(refs_json_raw) : "";
+        if (!refsJsonStr.empty()) {
+            try {
+                Json parsed = Json::parse(refsJsonStr);
+                if (parsed.is_array()) {
+                    for (const auto& item : parsed.as_array()) {
+                        if (item.is_string()) {
+                            issue.references.push_back(item.as_string());
+                        }
+                    }
+                }
+            } catch (...) {
+            }
+        }
+
+        issue.severity = static_cast<Severity>(sqlite3_column_int(stmt, 7));
+        issue.confidence = static_cast<Confidence>(sqlite3_column_int(stmt, 8));
+        issue.category = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
+        issue.analyzerId = AnalyzerId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10)));
+        issue.ruleId = RuleId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 11)));
 
         Location loc;
-        loc.fileId = FileId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8)));
-        loc.line = sqlite3_column_int(stmt, 9);
-        loc.column = sqlite3_column_int(stmt, 10);
-        loc.length = sqlite3_column_int(stmt, 11);
+        loc.fileId = FileId(reinterpret_cast<const char*>(sqlite3_column_text(stmt, 12)));
+        loc.line = sqlite3_column_int(stmt, 13);
+        loc.column = sqlite3_column_int(stmt, 14);
+        loc.length = sqlite3_column_int(stmt, 15);
         issue.location = loc;
+        issue.file = loc.fileId.value();
+        issue.line = loc.line;
+        issue.column = loc.column;
 
-        auto impact_raw = sqlite3_column_text(stmt, 12);
+        auto impact_raw = sqlite3_column_text(stmt, 16);
         issue.impact = impact_raw ? reinterpret_cast<const char*>(impact_raw) : "";
 
-        issue.status = static_cast<IssueStatus>(sqlite3_column_int(stmt, 13));
+        issue.status = static_cast<IssueStatus>(sqlite3_column_int(stmt, 17));
 
-        auto owner_raw = sqlite3_column_text(stmt, 14);
+        auto owner_raw = sqlite3_column_text(stmt, 18);
         issue.owner = owner_raw ? reinterpret_cast<const char*>(owner_raw) : "";
 
         Fix fix;
-        auto fix_id_raw = sqlite3_column_text(stmt, 15);
+        auto fix_id_raw = sqlite3_column_text(stmt, 19);
         fix.id = FixId(fix_id_raw ? reinterpret_cast<const char*>(fix_id_raw) : "");
         fix.issueId = issue.id;
 
-        auto fix_desc_raw = sqlite3_column_text(stmt, 16);
+        auto fix_desc_raw = sqlite3_column_text(stmt, 20);
         fix.description = fix_desc_raw ? reinterpret_cast<const char*>(fix_desc_raw) : "";
 
-        auto actions_json_raw = sqlite3_column_text(stmt, 17);
+        auto actions_json_raw = sqlite3_column_text(stmt, 21);
         std::string actionsJsonStr =
             actions_json_raw ? reinterpret_cast<const char*>(actions_json_raw) : "";
 
@@ -511,6 +571,22 @@ Expected<std::vector<Issue>, Error> Database::GetIssues(const ProjectId& project
         }
         fix.actions = actions;
         issue.fix = fix;
+
+        auto tags_json_raw = sqlite3_column_text(stmt, 22);
+        std::string tagsJsonStr = tags_json_raw ? reinterpret_cast<const char*>(tags_json_raw) : "";
+        if (!tagsJsonStr.empty()) {
+            try {
+                Json parsed = Json::parse(tagsJsonStr);
+                if (parsed.is_array()) {
+                    for (const auto& item : parsed.as_array()) {
+                        if (item.is_string()) {
+                            issue.tags.push_back(item.as_string());
+                        }
+                    }
+                }
+            } catch (...) {
+            }
+        }
 
         issues.push_back(issue);
     }
@@ -647,8 +723,9 @@ Expected<void, Error> Database::SaveRecommendation(const ProjectId& projectId,
         "why_now_reasons_json, blast_radius_files, blast_radius_module, "
         "blast_radius_public_api_changed, blast_radius_tests_impacted, "
         "blast_radius_binary_compatibility, learning_concept, learning_rationale, "
-        "learning_best_practice, learning_references_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
-        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        "learning_best_practice, learning_references_json, estimated_effort, estimated_impact, "
+        "preview, rollback) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+        "?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -667,6 +744,12 @@ Expected<void, Error> Database::SaveRecommendation(const ProjectId& projectId,
     }
     std::string refsJsonStr = Json(refsJson).serialize();
 
+    std::string effortVal = rec.estimatedEffort;
+    std::string impactVal = rec.estimatedImpact;
+    std::string autoVal = rec.safeAutomationLevel;
+    std::string previewVal = rec.preview.empty() ? rec.previewDiff : rec.preview;
+    bool rollbackVal = rec.rollback;
+
     sqlite3_bind_text(stmt, 1, rec.id.value().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, projectId.value().c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, rec.title.c_str(), -1, SQLITE_TRANSIENT);
@@ -680,7 +763,7 @@ Expected<void, Error> Database::SaveRecommendation(const ProjectId& projectId,
     sqlite3_bind_text(stmt, 11, rec.explanationExpert.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_double(stmt, 12, rec.confidenceScore);
     sqlite3_bind_text(stmt, 13, rec.confidenceLevel.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 14, rec.safeAutomationLevel.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 14, autoVal.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 15, rec.previewCurrentCode.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 16, rec.previewSuggestedCode.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 17, rec.previewDiff.c_str(), -1, SQLITE_TRANSIENT);
@@ -695,6 +778,10 @@ Expected<void, Error> Database::SaveRecommendation(const ProjectId& projectId,
     sqlite3_bind_text(stmt, 26, rec.learningRationale.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 27, rec.learningBestPractice.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 28, refsJsonStr.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 29, effortVal.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 30, impactVal.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 31, previewVal.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 32, rollbackVal ? 1 : 0);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -720,8 +807,8 @@ Expected<std::vector<Recommendation>, Error> Database::GetRecommendations(
         "preview_diff, rollback_support, why_now_reasons_json, blast_radius_files, "
         "blast_radius_module, blast_radius_public_api_changed, blast_radius_tests_impacted, "
         "blast_radius_binary_compatibility, learning_concept, learning_rationale, "
-        "learning_best_practice, learning_references_json FROM recommendations WHERE project_id = "
-        "?;";
+        "learning_best_practice, learning_references_json, estimated_effort, estimated_impact, "
+        "preview, rollback FROM recommendations WHERE project_id = ?;";
     sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
@@ -798,6 +885,14 @@ Expected<std::vector<Recommendation>, Error> Database::GetRecommendations(
             }
         }
         rec.learningReferences = refs;
+
+        auto est_effort_raw = sqlite3_column_text(stmt, 27);
+        rec.estimatedEffort = est_effort_raw ? reinterpret_cast<const char*>(est_effort_raw) : "";
+        auto est_impact_raw = sqlite3_column_text(stmt, 28);
+        rec.estimatedImpact = est_impact_raw ? reinterpret_cast<const char*>(est_impact_raw) : "";
+        auto prev_raw = sqlite3_column_text(stmt, 29);
+        rec.preview = prev_raw ? reinterpret_cast<const char*>(prev_raw) : "";
+        rec.rollback = sqlite3_column_int(stmt, 30) != 0;
 
         recs.push_back(rec);
     }

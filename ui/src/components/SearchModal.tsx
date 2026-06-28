@@ -122,7 +122,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       id: 'file-app-tsx',
       title: 'App.tsx',
       category: 'Files' as const,
-      subtitle: 'apps/desktop/frontend/src/App.tsx',
+      subtitle: 'ui/src/App.tsx',
       action: () => {
         onNavigateToWorkspace('codebase');
         onClose();

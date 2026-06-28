@@ -36,6 +36,16 @@ export interface Issue {
   fix?: Fix;
   status: 'Open' | 'Resolved';
   owner: string;
+
+  // V2 properties
+  repository: string;
+  file: string;
+  line: number;
+  column: number;
+  message: string;
+  evidence: string;
+  references: string[];
+  tags: string[];
 }
 
 export interface Project {
@@ -136,6 +146,10 @@ export interface Recommendation {
     bestPractice: string;
     references: string[];
   };
+
+  // V2 flat properties
+  v2Preview: string;
+  rollback: boolean;
 }
 
 // Event structures for progress updates
