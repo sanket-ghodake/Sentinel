@@ -6,12 +6,14 @@ import type {
   ScanStartedEvent,
   IssueFoundEvent,
   ScanCompletedEvent,
+  Recommendation,
 } from './clientApi';
 
 export class MockClient implements ClientApi {
   private projects: Record<string, Project> = {};
   private issues: Record<string, Issue[]> = {};
   private scans: Record<string, Scan> = {};
+  private recommendations: Record<string, Recommendation[]> = {};
 
   constructor() {
     this.initializeMockData();
@@ -171,11 +173,177 @@ export class MockClient implements ClientApi {
       },
     ];
 
+    const recs1: Recommendation[] = [
+      {
+        id: 'rec-sql-1',
+        title: 'SQL Injection Risk in Database Query',
+        description:
+          'Using string concatenation to build raw SQL queries can lead to SQL injection.',
+        origin: 'cppcheck/rule-sql-injection',
+        evidence: {
+          fileId: 'IpcServer.cpp',
+          line: 42,
+          matchedPattern: 'sql += input_val',
+        },
+        explanation: {
+          simple: 'User input is directly inserted into database queries without validation.',
+          technical:
+            'SQL query constructed via string concatenation, allowing parameter injection.',
+          expert:
+            'Input parameter is bound via raw string concatenation rather than parameterized SQL placeholder bindings, violating OWASP A03:2021-Injection guidelines.',
+        },
+        confidence: {
+          score: 98,
+          level: 'High',
+          signals: [
+            'Rule certainty',
+            'Analyzer agreement',
+            'Local code context',
+            'Historical false-positive rate',
+          ],
+        },
+        estimatedEffort: '2 minutes',
+        estimatedImpact: 'High',
+        safeAutomationLevel: 'PREVIEW',
+        preview: {
+          currentCode:
+            'std::string query = "SELECT * FROM users WHERE name = \'" + input_val + "\';";',
+          suggestedCode:
+            'std::string query = "SELECT * FROM users WHERE name = ?;";\nsqlite3_bind_text(stmt, 1, input_val.c_str(), -1, SQLITE_TRANSIENT);',
+          diff: '- std::string query = "SELECT * FROM users WHERE name = \'" + input_val + "\';";\n+ std::string query = "SELECT * FROM users WHERE name = ?;";\n+ sqlite3_bind_text(stmt, 1, input_val.c_str(), -1, SQLITE_TRANSIENT);',
+        },
+        rollbackSupport: true,
+        whyNow: ['Rule enabled yesterday', 'File modified in current branch'],
+        blastRadius: {
+          affectedFiles: 1,
+          affectedModule: 'Database',
+          publicApiChanged: false,
+          testsImpacted: 2,
+          binaryCompatibility: 'Unchanged',
+        },
+        timeline: {
+          detected: '2026-06-28T10:00:00Z',
+          reviewed: '2026-06-28T10:15:00Z',
+        },
+        learningMode: {
+          concept: 'SQL Injection & Parameterization',
+          rationale:
+            'Raw SQL concatenation opens vectors for database compromise, leading to information leakage or arbitrary command execution.',
+          bestPractice: 'Always bind user inputs using parameters rather than concatenation.',
+          references: ['OWASP Injection Guide', 'C++ Core Guidelines Security'],
+        },
+      },
+      {
+        id: 'rec-unused-1',
+        title: "Unused Variable 'tempCode'",
+        description: "The local variable 'tempCode' is declared but never referenced.",
+        origin: 'clang-tidy/rule-unused-variable',
+        evidence: {
+          fileId: 'JsonRpcHandler.cpp',
+          line: 85,
+          matchedPattern: 'int tempCode = 5;',
+        },
+        explanation: {
+          simple: 'This variable is declared but never used.',
+          technical: 'Local variable does not participate in any subsequent operations.',
+          expert:
+            'Redundant stack variable allocation increases bytecode noise and complicates readability without contributing to function semantics.',
+        },
+        confidence: {
+          score: 99,
+          level: 'High',
+          signals: ['Syntax parsing accuracy', 'No usage matched'],
+        },
+        estimatedEffort: '1 minute',
+        estimatedImpact: 'Low',
+        safeAutomationLevel: 'YES',
+        preview: {
+          currentCode: 'int tempCode = 5;',
+          suggestedCode: '',
+          diff: '- int tempCode = 5;',
+        },
+        rollbackSupport: true,
+        whyNow: ['New rule activated in style guide'],
+        blastRadius: {
+          affectedFiles: 1,
+          affectedModule: 'IPC',
+          publicApiChanged: false,
+          testsImpacted: 0,
+          binaryCompatibility: 'Unchanged',
+        },
+        timeline: {
+          detected: '2026-06-28T10:05:00Z',
+        },
+        learningMode: {
+          concept: 'Dead Code Elimination',
+          rationale:
+            'Keeping unused variables pollutes the codebase and can hide logical bugs where the developer intended to use the variable.',
+          bestPractice:
+            'Proactively remove dead variables or mark with [[maybe_unused]] if intended for debug scenarios.',
+          references: ['C++ Core Guidelines ES.2'],
+        },
+      },
+    ];
+
+    const recs2: Recommendation[] = [
+      {
+        id: 'rec-eslint-1',
+        title: 'Console.log Warning',
+        description: 'Avoid using console.log in production code.',
+        origin: 'eslint/rule-console-log',
+        evidence: {
+          fileId: 'App.tsx',
+          line: 12,
+          matchedPattern: 'console.log(data);',
+        },
+        explanation: {
+          simple: 'Avoid printing logs directly to console in production.',
+          technical: 'console.log usage bypasses central logging configuration.',
+          expert:
+            'Direct console invocation can leak sensitive runtime structures and slows browser UI thread rendering during intensive loops.',
+        },
+        confidence: {
+          score: 90,
+          level: 'Medium',
+          signals: ['Rule certainty'],
+        },
+        estimatedEffort: '1 minute',
+        estimatedImpact: 'Medium',
+        safeAutomationLevel: 'YES',
+        preview: {
+          currentCode: 'console.log(data);',
+          suggestedCode: '',
+          diff: '- console.log(data);',
+        },
+        rollbackSupport: true,
+        whyNow: ['Commit hook check ESLint failed'],
+        blastRadius: {
+          affectedFiles: 1,
+          affectedModule: 'App UI',
+          publicApiChanged: false,
+          testsImpacted: 1,
+          binaryCompatibility: 'Unchanged',
+        },
+        timeline: {
+          detected: '2026-06-28T10:10:00Z',
+        },
+        learningMode: {
+          concept: 'Production Logging Rules',
+          rationale:
+            'Use structured loggers that can toggle severity filters instead of exposing development logs to users.',
+          bestPractice: 'Leverage logger services instead of raw stdout console streams.',
+          references: ['12-Factor App Logging guidelines'],
+        },
+      },
+    ];
+
     this.projects[p1.id] = p1;
     this.issues[p1.id] = issues1;
+    this.recommendations[p1.id] = recs1;
 
     this.projects[p2.id] = p2;
     this.issues[p2.id] = issues2;
+    this.recommendations[p2.id] = recs2;
   }
 
   async GetProjects(): Promise<Project[]> {
@@ -328,6 +496,14 @@ export class MockClient implements ClientApi {
       throw new Error('Project ID not found');
     }
     return projectIssues;
+  }
+
+  async GetRecommendations(projectId: string): Promise<Recommendation[]> {
+    const projectRecs = this.recommendations[projectId];
+    if (!projectRecs) {
+      throw new Error('Project ID not found');
+    }
+    return projectRecs;
   }
 
   async ApplyAutofix(issueId: string): Promise<boolean> {

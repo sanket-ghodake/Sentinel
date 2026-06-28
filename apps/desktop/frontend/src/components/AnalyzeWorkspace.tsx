@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldAlert,
   ArrowRight,
   ChevronRight,
   Wrench,
@@ -8,14 +7,12 @@ import {
   Filter,
   CheckCircle,
   XCircle,
-  ArrowLeft,
   Info,
-  History,
-  FileCode,
-  GitCommit,
 } from 'lucide-react';
-import type { Project, Issue } from '../services/clientApi';
+import type { Project, Issue, Recommendation } from '../services/clientApi';
 import type { InspectorObject } from './Inspector';
+import { client } from '../App';
+import { InvestigationWorkspace } from './InvestigationWorkspace';
 
 interface AnalyzeWorkspaceProps {
   activeProject: Project;
@@ -27,6 +24,8 @@ interface AnalyzeWorkspaceProps {
   isScanning: boolean;
   onRunScan: () => void;
   setActiveWorkspace: (ws: string) => void;
+  isInvestigating: boolean;
+  setIsInvestigating: (val: boolean) => void;
 }
 
 export const AnalyzeWorkspace: React.FC<AnalyzeWorkspaceProps> = ({
@@ -39,15 +38,31 @@ export const AnalyzeWorkspace: React.FC<AnalyzeWorkspaceProps> = ({
   isScanning,
   onRunScan,
   setActiveWorkspace,
+  isInvestigating,
+  setIsInvestigating,
 }) => {
   // Filters & State
   const [activeDomainFilter, setActiveDomainFilter] = useState<string | null>(null);
   const [activeSmartFilter, setActiveSmartFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isInvestigating, setIsInvestigating] = useState(false);
   const [ignoredIssues, setIgnoredIssues] = useState<Record<string, string>>({});
   const [showIgnoreModal, setShowIgnoreModal] = useState<string | null>(null);
   const [ignoreReason, setIgnoreReason] = useState<string>('False Positive');
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+
+  // Fetch recommendations for active project
+  useEffect(() => {
+    async function loadRecommendations() {
+      try {
+        const list = await client.GetRecommendations(activeProject.id);
+        setRecommendations(list);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to load recommendations', e);
+      }
+    }
+    loadRecommendations();
+  }, [activeProject.id]);
 
   // Sync selected issue change with Inspector object
   useEffect(() => {
@@ -235,498 +250,34 @@ export const AnalyzeWorkspace: React.FC<AnalyzeWorkspaceProps> = ({
     }
   };
 
+  const [isApplyingRec, setIsApplyingRec] = useState(false);
+  const handleApplyRecFix = async (recId: string) => {
+    setIsApplyingRec(true);
+    const issueId = recId.replace('rec-', 'issue-');
+    try {
+      await onApplyFix(issueId);
+      setIsInvestigating(false);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    } finally {
+      setIsApplyingRec(false);
+    }
+  };
+
   // Render Investigation Mode Layout
   if (isInvestigating && selectedIssue) {
-    const confidence = getConfidenceLevel(selectedIssue);
-
+    const matchingRecId = selectedIssue.id.replace('issue-', 'rec-');
     return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--sds-space-16)',
-          height: '100%',
-        }}
-      >
-        {/* Investigation Header */}
-        <div
-          className="sds-card"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: 'var(--sds-space-16)',
-            borderColor: 'var(--sds-primary)',
-            background: 'linear-gradient(90deg, rgba(99,102,241,0.05) 0%, rgba(0,0,0,0) 100%)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-12)' }}>
-            <button
-              onClick={() => setIsInvestigating(false)}
-              className="sds-btn sds-btn-secondary"
-              style={{ padding: '6px 12px', minWidth: 'auto' }}
-            >
-              <ArrowLeft size={14} /> Back
-            </button>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span
-                  className="sds-badge sds-badge-danger"
-                  style={{
-                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                    border: '1px solid var(--sds-danger)',
-                    color: 'var(--sds-danger)',
-                    fontSize: '10px',
-                  }}
-                >
-                  Investigation Mode
-                </span>
-                <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--sds-text-heading)' }}>
-                  {selectedIssue.title}
-                </h2>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginTop: '2px',
-                  fontSize: '11px',
-                  color: 'var(--sds-text-muted)',
-                }}
-              >
-                <span>
-                  File: {selectedIssue.location.fileId}:{selectedIssue.location.line}
-                </span>
-                <span>•</span>
-                <span>Category: {selectedIssue.category}</span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-16)' }}>
-            {/* Confidence Meter Badge */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '6px 12px',
-                backgroundColor: 'rgba(0,0,0,0.2)',
-                borderRadius: 'var(--sds-radius-md)',
-                border: '1px solid var(--sds-border)',
-              }}
-            >
-              <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>Confidence:</span>
-              <span style={{ fontSize: '12px', fontWeight: 600, color: confidence.color }}>
-                {confidence.score}%
-              </span>
-              <span
-                style={{
-                  fontSize: '10px',
-                  padding: '2px 6px',
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                  borderRadius: '3px',
-                  color: 'var(--sds-text-muted)',
-                }}
-              >
-                {confidence.label}
-              </span>
-            </div>
-
-            {selectedIssue.fix && selectedIssue.status === 'Open' && (
-              <button
-                onClick={async () => {
-                  await onApplyFix(selectedIssue.id);
-                  setIsInvestigating(false);
-                }}
-                className="sds-btn sds-btn-primary"
-                style={{ padding: '8px 16px' }}
-              >
-                <Wrench size={14} /> Apply Fix
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 4-Pane Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1.2fr',
-            gridTemplateRows: '1.2fr 1fr',
-            gap: 'var(--sds-space-16)',
-            flex: 1,
-            minHeight: '500px',
-          }}
-        >
-          {/* Pane 1: Call Graph Visualizer */}
-          <div
-            className="sds-card"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-12)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <GitCommit size={14} color="var(--sds-primary)" />
-              <h3 style={{ fontSize: '13px', fontWeight: 600 }}>1. Call Graph Trace</h3>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                backgroundColor: 'rgba(0,0,0,0.2)',
-                border: '1px dashed var(--sds-border)',
-                borderRadius: 'var(--sds-radius-md)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'auto',
-              }}
-            >
-              {/* Directed flowchart SVG */}
-              <svg width="340" height="200" viewBox="0 0 340 200">
-                {/* Arrow heads */}
-                <defs>
-                  <marker
-                    id="arrow"
-                    viewBox="0 0 10 10"
-                    refX="6"
-                    refY="5"
-                    markerWidth="6"
-                    markerHeight="6"
-                    orient="auto-start-reverse"
-                  >
-                    <path d="M 0 2 L 10 5 L 0 8 z" fill="var(--sds-border-hover)" />
-                  </marker>
-                </defs>
-
-                {/* Edges */}
-                <line
-                  x1="50"
-                  y1="100"
-                  x2="140"
-                  y2="70"
-                  stroke="var(--sds-border-hover)"
-                  strokeWidth="1.5"
-                  markerEnd="url(#arrow)"
-                />
-                <line
-                  x1="50"
-                  y1="100"
-                  x2="140"
-                  y2="130"
-                  stroke="var(--sds-border-hover)"
-                  strokeWidth="1.5"
-                  markerEnd="url(#arrow)"
-                />
-                <line
-                  x1="140"
-                  y1="70"
-                  x2="270"
-                  y2="100"
-                  stroke="var(--sds-primary)"
-                  strokeWidth="2.5"
-                  markerEnd="url(#arrow)"
-                />
-                <line
-                  x1="140"
-                  y1="130"
-                  x2="270"
-                  y2="100"
-                  stroke="var(--sds-border-hover)"
-                  strokeWidth="1.5"
-                  markerEnd="url(#arrow)"
-                />
-
-                {/* Node 1 */}
-                <rect
-                  x="15"
-                  y="85"
-                  width="70"
-                  height="30"
-                  rx="4"
-                  fill="var(--sds-surface-hover)"
-                  stroke="var(--sds-border)"
-                  strokeWidth="1.5"
-                />
-                <text
-                  x="50"
-                  y="104"
-                  textAnchor="middle"
-                  fill="var(--sds-text)"
-                  fontSize="10"
-                  fontFamily="var(--sds-font-mono)"
-                >
-                  main()
-                </text>
-
-                {/* Node 2 */}
-                <rect
-                  x="110"
-                  y="55"
-                  width="80"
-                  height="30"
-                  rx="4"
-                  fill="var(--sds-surface-hover)"
-                  stroke="var(--sds-border)"
-                  strokeWidth="1.5"
-                />
-                <text
-                  x="150"
-                  y="74"
-                  textAnchor="middle"
-                  fill="var(--sds-text)"
-                  fontSize="10"
-                  fontFamily="var(--sds-font-mono)"
-                >
-                  dispatch()
-                </text>
-
-                {/* Node 3 */}
-                <rect
-                  x="110"
-                  y="115"
-                  width="80"
-                  height="30"
-                  rx="4"
-                  fill="var(--sds-surface-hover)"
-                  stroke="var(--sds-border)"
-                  strokeWidth="1.5"
-                />
-                <text
-                  x="150"
-                  y="134"
-                  textAnchor="middle"
-                  fill="var(--sds-text)"
-                  fontSize="10"
-                  fontFamily="var(--sds-font-mono)"
-                >
-                  logResult()
-                </text>
-
-                {/* Node 4 (Target) */}
-                <rect
-                  x="235"
-                  y="85"
-                  width="90"
-                  height="34"
-                  rx="4"
-                  fill="var(--sds-surface-active)"
-                  stroke="var(--sds-danger)"
-                  strokeWidth="2"
-                />
-                <text
-                  x="280"
-                  y="105"
-                  textAnchor="middle"
-                  fill="var(--sds-text-heading)"
-                  fontWeight="600"
-                  fontSize="10"
-                  fontFamily="var(--sds-font-mono)"
-                >
-                  {selectedIssue.location.fileId.split('.')[0]}
-                </text>
-              </svg>
-            </div>
-          </div>
-
-          {/* Pane 2: Code Context Editor */}
-          <div
-            className="sds-card"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-12)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <FileCode size={14} color="var(--sds-success)" />
-              <h3 style={{ fontSize: '13px', fontWeight: 600 }}>2. Code Context Viewer</h3>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                backgroundColor: '#07080b',
-                border: '1px solid var(--sds-border)',
-                borderRadius: 'var(--sds-radius-md)',
-                padding: 'var(--sds-space-16)',
-                fontFamily: 'var(--sds-font-mono)',
-                fontSize: '11px',
-                color: '#a1a0a5',
-                lineHeight: '1.6',
-                overflowY: 'auto',
-              }}
-            >
-              <div>1: #include &lt;string&gt;</div>
-              <div>2: #include &lt;vector&gt;</div>
-              <div>...</div>
-              <div>
-                {selectedIssue.location.line - 2}: void handleQuery(std::string input) {'{'}
-              </div>
-              <div>{selectedIssue.location.line - 1}: // Perform pre-validation checks</div>
-              <div
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                  borderLeft: '3px solid var(--sds-danger)',
-                  marginLeft: '-16px',
-                  marginRight: '-16px',
-                  paddingLeft: '13px',
-                }}
-              >
-                {selectedIssue.location.line}:{' '}
-                {selectedIssue.fix?.actions[0]?.preview.split('\n')[2] ||
-                  'std::string query = "SELECT * FROM users WHERE name = \'" + input + "\';";'}
-                <div
-                  style={{
-                    fontSize: '10px',
-                    color: 'var(--sds-danger)',
-                    marginTop: '2px',
-                    fontWeight: 500,
-                  }}
-                >
-                  ⚠️ Diagnostic: {selectedIssue.description}
-                </div>
-              </div>
-              <div>{selectedIssue.location.line + 1}: execute(query);</div>
-              <div>
-                {selectedIssue.location.line + 2}: {'}'}
-              </div>
-            </div>
-          </div>
-
-          {/* Pane 3: Git History & Blame */}
-          <div
-            className="sds-card"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-12)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <History size={14} color="var(--sds-info)" />
-              <h3 style={{ fontSize: '13px', fontWeight: 600 }}>3. Git Activity & Author</h3>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                fontSize: '12px',
-                overflowY: 'auto',
-              }}
-            >
-              <div
-                style={{
-                  padding: '10px',
-                  backgroundColor: 'rgba(0,0,0,0.15)',
-                  border: '1px solid var(--sds-border)',
-                  borderRadius: 'var(--sds-radius-sm)',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                  <span style={{ color: 'var(--sds-text-heading)' }}>Sanket Ghodake</span>
-                  <span style={{ color: 'var(--sds-text-muted)' }}>2 days ago</span>
-                </div>
-                <div
-                  style={{
-                    color: 'var(--sds-primary)',
-                    marginTop: '2px',
-                    fontFamily: 'var(--sds-font-mono)',
-                    fontSize: '11px',
-                  }}
-                >
-                  commit e5f67b2d
-                </div>
-                <p style={{ margin: '4px 0 0 0', color: 'var(--sds-text)', fontSize: '11px' }}>
-                  Initialize domain object structures and add event handlers.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  padding: '10px',
-                  backgroundColor: 'rgba(0,0,0,0.05)',
-                  border: '1px dashed var(--sds-border)',
-                  borderRadius: 'var(--sds-radius-sm)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  color: 'var(--sds-text-muted)',
-                  fontSize: '11px',
-                }}
-              >
-                <span>File Churn Rate: Low</span>
-                <span>PR: #18</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Pane 4: Recommended Fix Diff */}
-          <div
-            className="sds-card"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--sds-space-12)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldAlert size={14} color="var(--sds-warning)" />
-              <h3 style={{ fontSize: '13px', fontWeight: 600 }}>4. Proposed Repair Preview</h3>
-            </div>
-            <div
-              style={{
-                flex: 1,
-                backgroundColor: 'rgba(0,0,0,0.1)',
-                border: '1px solid var(--sds-border)',
-                borderRadius: 'var(--sds-radius-md)',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.02)',
-                  borderBottom: '1px solid var(--sds-border)',
-                  padding: '6px var(--sds-space-12)',
-                  fontSize: '11px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  color: 'var(--sds-text-muted)',
-                }}
-              >
-                <span>Automated Patch Preview</span>
-                <span style={{ color: 'var(--sds-success)', fontWeight: 600 }}>Safe</span>
-              </div>
-              <pre
-                style={{
-                  flex: 1,
-                  margin: 0,
-                  padding: 'var(--sds-space-12)',
-                  fontFamily: 'var(--sds-font-mono)',
-                  fontSize: '10px',
-                  lineHeight: '1.4',
-                  color: '#a1a0a5',
-                  overflowY: 'auto',
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {selectedIssue.fix?.actions[0]?.preview ||
-                  '- std::string query = "SELECT * FROM WHERE name = \'" + input + "\';";\n+ std::string query = "SELECT * FROM WHERE name = ?;";\n+ sqlite3_bind_text(stmt, 1, input.c_str(), -1, SQLITE_TRANSIENT);'}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </div>
+      <InvestigationWorkspace
+        activeProject={activeProject}
+        recommendations={recommendations}
+        activeRecommendationId={matchingRecId}
+        onClose={() => setIsInvestigating(false)}
+        onApplyFix={handleApplyRecFix}
+        isApplying={isApplyingRec}
+        setInspectorObject={setInspectorObject}
+      />
     );
   }
 

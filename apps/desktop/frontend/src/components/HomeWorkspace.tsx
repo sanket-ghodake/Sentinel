@@ -13,6 +13,8 @@ interface HomeWorkspaceProps {
   setActiveWorkspace: (ws: string) => void;
   setInspectorObject: (obj: InspectorObject | null) => void;
   onProjectChange: (id: string) => void;
+  setSelectedIssueId: (id: string | null) => void;
+  setIsInvestigating: (val: boolean) => void;
 }
 
 export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
@@ -24,6 +26,8 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
   setActiveWorkspace,
   setInspectorObject,
   onProjectChange,
+  setSelectedIssueId,
+  setIsInvestigating,
 }) => {
   const openIssues = issues.filter((i) => i.status === 'Open');
   const blockingIssues = openIssues.filter(
@@ -253,7 +257,11 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
                 }}
                 onClick={() => {
                   const memIssue = issues.find((i) => i.category === 'Memory') || issues[0];
-                  if (memIssue) setInspectorObject({ type: 'issue', data: memIssue });
+                  if (memIssue) {
+                    setSelectedIssueId(memIssue.id);
+                    setIsInvestigating(true);
+                    setActiveWorkspace('analyze');
+                  }
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.backgroundColor = 'var(--sds-surface-hover)')
@@ -275,7 +283,12 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveWorkspace('analyze');
+                      const memIssue = issues.find((i) => i.category === 'Memory') || issues[0];
+                      if (memIssue) {
+                        setSelectedIssueId(memIssue.id);
+                        setIsInvestigating(true);
+                        setActiveWorkspace('analyze');
+                      }
                     }}
                     className="sds-btn sds-btn-secondary"
                     style={{ fontSize: '11px', padding: '4px 10px' }}
@@ -301,7 +314,10 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
                 }}
                 onClick={() => {
                   const safeIssue = issues.find((i) => i.fix) || issues[0];
-                  if (safeIssue) setInspectorObject({ type: 'issue', data: safeIssue });
+                  if (safeIssue) {
+                    setSelectedIssueId(safeIssue.id);
+                    setActiveWorkspace('improve');
+                  }
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.backgroundColor = 'var(--sds-surface-hover)')
@@ -330,7 +346,11 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveWorkspace('improve');
+                      const safeIssue = issues.find((i) => i.fix) || issues[0];
+                      if (safeIssue) {
+                        setSelectedIssueId(safeIssue.id);
+                        setActiveWorkspace('improve');
+                      }
                     }}
                     className="sds-btn sds-btn-primary"
                     style={{
@@ -406,8 +426,7 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
                   transition: 'background-color 0.15s ease',
                 }}
                 onClick={() => {
-                  const perfIssue = issues.find((i) => i.category === 'Performance') || issues[0];
-                  if (perfIssue) setInspectorObject({ type: 'issue', data: perfIssue });
+                  setActiveWorkspace('insights');
                 }}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.backgroundColor = 'var(--sds-surface-hover)')

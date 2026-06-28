@@ -14,9 +14,45 @@ struct Recommendation
     RecommendationId id;
     std::string title;
     std::string description;
-    double priority = 0.0;
-    std::vector<IssueId> sourceIssues;
-    std::vector<TaskId> tasks;
+    std::string origin;
+
+    // Evidence & Context
+    std::string fileId;
+    int line = 0;
+    std::string matchedPattern;
+
+    // Explanation
+    std::string explanationSimple;
+    std::string explanationTechnical;
+    std::string explanationExpert;
+
+    // Confidence & Automation
+    double confidenceScore = 0.0;
+    std::string confidenceLevel;
+    std::vector<std::string> confidenceSignals;
+    std::string safeAutomationLevel;  // "YES", "NO", "PREVIEW"
+
+    // Patch / Preview
+    std::string previewCurrentCode;
+    std::string previewSuggestedCode;
+    std::string previewDiff;
+    bool rollbackSupport = true;
+
+    // Why Now?
+    std::vector<std::string> whyNowReasons;
+
+    // Blast Radius
+    int blastRadiusAffectedFiles = 0;
+    std::string blastRadiusAffectedModule;
+    bool blastRadiusPublicApiChanged = false;
+    int blastRadiusTestsImpacted = 0;
+    std::string blastRadiusBinaryCompatibility;
+
+    // Learning Mode
+    std::string learningConcept;
+    std::string learningRationale;
+    std::string learningBestPractice;
+    std::vector<std::string> learningReferences;
 
     auto operator<=>(const Recommendation&) const = default;
 };

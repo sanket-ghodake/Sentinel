@@ -6,6 +6,7 @@ import type {
   ScanStartedEvent,
   IssueFoundEvent,
   ScanCompletedEvent,
+  Recommendation,
 } from './clientApi';
 import { QWebChannel } from './qwebchannel';
 
@@ -142,5 +143,9 @@ export class QtBridgeClient implements ClientApi {
 
   async GetProjects(): Promise<Project[]> {
     return this.callBridge<Project[]>('GetProjects');
+  }
+
+  async GetRecommendations(projectId: string): Promise<Recommendation[]> {
+    return this.callBridge<Recommendation[]>('GetRecommendations', { projectId });
   }
 }

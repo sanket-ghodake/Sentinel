@@ -69,6 +69,75 @@ export interface Scan {
   status: 'scanning' | 'completed' | 'failed';
 }
 
+export interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  origin: string; // "analyzer/rule"
+
+  // Evidence & Context
+  evidence: {
+    fileId: string;
+    line: number;
+    matchedPattern: string;
+  };
+
+  // Explanation
+  explanation: {
+    simple: string;
+    technical: string;
+    expert: string;
+  };
+
+  // Confidence & Automation
+  confidence: {
+    score: number;
+    level: 'High' | 'Medium' | 'Low';
+    signals: string[];
+  };
+
+  estimatedEffort: string;
+  estimatedImpact: string;
+  safeAutomationLevel: 'YES' | 'NO' | 'PREVIEW';
+
+  // Patch / Preview
+  preview: {
+    currentCode: string;
+    suggestedCode: string;
+    diff: string;
+  };
+
+  rollbackSupport: boolean;
+  whyNow: string[];
+
+  // Blast Radius
+  blastRadius: {
+    affectedFiles: number;
+    affectedModule: string;
+    publicApiChanged: boolean;
+    testsImpacted: number;
+    binaryCompatibility: string;
+  };
+
+  // Timeline states
+  timeline: {
+    detected: string;
+    reviewed?: string;
+    previewGenerated?: string;
+    applied?: string;
+    verified?: string;
+    closed?: string;
+  };
+
+  // Learning Mode
+  learningMode: {
+    concept: string;
+    rationale: string;
+    bestPractice: string;
+    references: string[];
+  };
+}
+
 // Event structures for progress updates
 export interface ScanStartedEvent {
   type: 'ScanStarted';
@@ -107,6 +176,7 @@ export interface ClientApi {
     ) => void,
   ): Promise<Scan>;
   GetIssues(projectId: string): Promise<Issue[]>;
+  GetRecommendations(projectId: string): Promise<Recommendation[]>;
   ApplyAutofix(issueId: string): Promise<boolean>;
   GetProjectSummary(projectId: string): Promise<Project>;
   GetProjects(): Promise<Project[]>;

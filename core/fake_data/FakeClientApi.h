@@ -23,6 +23,8 @@ public:
     Expected<bool, Error> ApplyAutofix(const IssueId& issueId) override;
     Expected<Project, Error> GetProjectSummary(const ProjectId& projectId) override;
     Expected<std::vector<Project>, Error> GetProjects() override;
+    Expected<std::vector<Recommendation>, Error> GetRecommendations(
+        const ProjectId& projectId) override;
 
 private:
     void initializeMockData();
@@ -35,6 +37,7 @@ private:
     std::unordered_map<std::string, ProjectId> pathToProjectId_;
     std::unordered_map<ScanId, Scan> scans_;
     std::unordered_map<ProjectId, std::vector<Issue>> issues_;
+    std::unordered_map<ProjectId, std::vector<Recommendation>> recommendations_;
 
     std::vector<std::jthread> scanThreads_;
 };

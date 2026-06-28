@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "sentinel/Expected.h"
+#include "sentinel/Insights.h"
 #include "sentinel/Quality.h"
 #include "sentinel/Workspace.h"
 
@@ -20,6 +21,8 @@ public:
     virtual Expected<bool, Error> ApplyAutofix(const IssueId& issueId) = 0;
     virtual Expected<Project, Error> GetProjectSummary(const ProjectId& projectId) = 0;
     virtual Expected<std::vector<Project>, Error> GetProjects() = 0;
+    virtual Expected<std::vector<Recommendation>, Error> GetRecommendations(
+        const ProjectId& projectId) = 0;
 };
 
 }  // namespace sentinel

@@ -155,6 +155,20 @@ void TestGetProjects()
     assert(hasDashboard);
 }
 
+void TestGetRecommendations()
+{
+    std::cout << "[Test] Running GetRecommendations tests..." << std::endl;
+    sentinel::EventBus bus;
+    sentinel::FakeClientApi api(bus);
+
+    sentinel::ProjectId pId("proj-sentinel");
+    auto recsRes = api.GetRecommendations(pId);
+    assert(recsRes.has_value());
+    assert(recsRes.value().size() == 2);
+    assert(recsRes.value()[0].id == sentinel::RecommendationId("rec-sql-1"));
+    assert(recsRes.value()[1].id == sentinel::RecommendationId("rec-unused-1"));
+}
+
 int main()
 {
     std::cout << "========================================" << std::endl;
@@ -165,6 +179,7 @@ int main()
     TestGetIssuesAndSummary();
     TestApplyAutofix();
     TestGetProjects();
+    TestGetRecommendations();
     TestRunScanAsynchronous();
 
     std::cout << "========================================" << std::endl;

@@ -26,23 +26,32 @@ interface InspectorProject {
   status: string;
   language: string;
   quality: number;
+  plugins?: string[];
+  owner?: string;
+  filesCount?: number;
 }
 
 interface InspectorFile {
   name: string;
   path: string;
   issuesCount: number;
+  loc?: number;
+  lastModified?: string;
 }
 
 interface InspectorFolder {
   name: string;
   path: string;
+  subdirsCount?: number;
+  filesCount?: number;
 }
 
 interface InspectorPlugin {
   name: string;
   version: string;
   status?: string;
+  description?: string;
+  category?: string;
 }
 
 interface InspectorRecommendation {
@@ -51,6 +60,7 @@ interface InspectorRecommendation {
   category: string;
   effort: string;
   target: string;
+  impact?: string;
 }
 
 export interface InspectorObject {

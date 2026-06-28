@@ -148,6 +148,128 @@ void FakeClientApi::initializeMockData()
     projects_[p2Id] = p2;
     pathToProjectId_[p2.path] = p2Id;
     issues_[p2Id] = {tsIssue1};
+
+    Recommendation cppRec1{
+        .id = RecommendationId("rec-sql-1"),
+        .title = "SQL Injection Risk in Database Query",
+        .description =
+            "Using string concatenation to build raw SQL queries can lead to SQL injection.",
+        .origin = "cppcheck/rule-sql-injection",
+        .fileId = "IpcServer.cpp",
+        .line = 42,
+        .matchedPattern = "sql += input_val",
+        .explanationSimple =
+            "User input is directly inserted into database queries without validation.",
+        .explanationTechnical =
+            "SQL query constructed via string concatenation, allowing parameter injection.",
+        .explanationExpert =
+            "Input parameter is bound via raw string concatenation rather than parameterized SQL "
+            "placeholder bindings, violating OWASP A03:2021-Injection guidelines.",
+        .confidenceScore = 98.0,
+        .confidenceLevel = "High",
+        .confidenceSignals = {"Rule certainty",
+                              "Analyzer agreement",
+                              "Local code context",
+                              "Historical false-positive rate"},
+        .safeAutomationLevel = "PREVIEW",
+        .previewCurrentCode =
+            "std::string query = \"SELECT * FROM users WHERE name = \'\""
+            " + input_val + \"\';\";",
+        .previewSuggestedCode =
+            "std::string query = \"SELECT * FROM users WHERE name = ?;\";\nsqlite3_bind_text(stmt, "
+            "1, input_val.c_str(), -1, SQLITE_TRANSIENT);",
+        .previewDiff =
+            "- std::string query = \"SELECT * FROM users WHERE name = \'\""
+            " + input_val + \"\';\";\n"
+            "+ std::string query = \"SELECT * FROM users WHERE name = ?;\";\n"
+            "+ sqlite3_bind_text(stmt, 1, input_val.c_str(), -1, SQLITE_TRANSIENT);",
+        .rollbackSupport = true,
+        .whyNowReasons = {"Rule enabled yesterday", "File modified in current branch"},
+        .blastRadiusAffectedFiles = 1,
+        .blastRadiusAffectedModule = "Database",
+        .blastRadiusPublicApiChanged = false,
+        .blastRadiusTestsImpacted = 2,
+        .blastRadiusBinaryCompatibility = "Unchanged",
+        .learningConcept = "SQL Injection & Parameterization",
+        .learningRationale =
+            "Raw SQL concatenation opens vectors for database compromise, leading to information "
+            "leakage or arbitrary command execution.",
+        .learningBestPractice =
+            "Always bind user inputs using parameters rather than concatenation.",
+        .learningReferences = {"OWASP Injection Guide", "C++ Core Guidelines Security"}};
+
+    Recommendation cppRec2{
+        .id = RecommendationId("rec-unused-1"),
+        .title = "Unused Variable 'tempCode'",
+        .description = "The local variable 'tempCode' is declared but never referenced.",
+        .origin = "clang-tidy/rule-unused-variable",
+        .fileId = "JsonRpcHandler.cpp",
+        .line = 85,
+        .matchedPattern = "int tempCode = 5;",
+        .explanationSimple = "This variable is declared but never used.",
+        .explanationTechnical = "Local variable does not participate in any subsequent operations.",
+        .explanationExpert =
+            "Redundant stack variable allocation increases bytecode noise and complicates "
+            "readability without contributing to function semantics.",
+        .confidenceScore = 99.0,
+        .confidenceLevel = "High",
+        .confidenceSignals = {"Syntax parsing accuracy", "No usage matched"},
+        .safeAutomationLevel = "YES",
+        .previewCurrentCode = "int tempCode = 5;",
+        .previewSuggestedCode = "",
+        .previewDiff = "- int tempCode = 5;",
+        .rollbackSupport = true,
+        .whyNowReasons = {"New rule activated in style guide"},
+        .blastRadiusAffectedFiles = 1,
+        .blastRadiusAffectedModule = "IPC",
+        .blastRadiusPublicApiChanged = false,
+        .blastRadiusTestsImpacted = 0,
+        .blastRadiusBinaryCompatibility = "Unchanged",
+        .learningConcept = "Dead Code Elimination",
+        .learningRationale =
+            "Keeping unused variables pollutes the codebase and can hide logical bugs where the "
+            "developer intended to use the variable.",
+        .learningBestPractice =
+            "Proactively remove dead variables or mark with [[maybe_unused]] if intended for debug "
+            "scenarios.",
+        .learningReferences = {"C++ Core Guidelines ES.2"}};
+
+    Recommendation tsRec1{
+        .id = RecommendationId("rec-eslint-1"),
+        .title = "Console.log Warning",
+        .description = "Avoid using console.log in production code.",
+        .origin = "eslint/rule-console-log",
+        .fileId = "App.tsx",
+        .line = 12,
+        .matchedPattern = "console.log(data);",
+        .explanationSimple = "Avoid printing logs directly to console in production.",
+        .explanationTechnical = "console.log usage bypasses central logging configuration.",
+        .explanationExpert =
+            "Direct console invocation can leak sensitive runtime structures and slows browser UI "
+            "thread rendering during intensive loops.",
+        .confidenceScore = 90.0,
+        .confidenceLevel = "Medium",
+        .confidenceSignals = {"Rule certainty"},
+        .safeAutomationLevel = "YES",
+        .previewCurrentCode = "console.log(data);",
+        .previewSuggestedCode = "",
+        .previewDiff = "- console.log(data);",
+        .rollbackSupport = true,
+        .whyNowReasons = {"Commit hook check ESLint failed"},
+        .blastRadiusAffectedFiles = 1,
+        .blastRadiusAffectedModule = "App UI",
+        .blastRadiusPublicApiChanged = false,
+        .blastRadiusTestsImpacted = 1,
+        .blastRadiusBinaryCompatibility = "Unchanged",
+        .learningConcept = "Production Logging Rules",
+        .learningRationale =
+            "Use structured loggers that can toggle severity filters instead of exposing "
+            "development logs to users.",
+        .learningBestPractice = "Leverage logger services instead of raw stdout console streams.",
+        .learningReferences = {"12-Factor App Logging guidelines"}};
+
+    recommendations_[p1Id] = {cppRec1, cppRec2};
+    recommendations_[p2Id] = {tsRec1};
 }
 
 Expected<Project, Error> FakeClientApi::OpenProject(const std::string& path)
@@ -366,6 +488,19 @@ void FakeClientApi::simulateScan(ScanId scanId, ProjectId projectId, std::stop_t
                                     .timestamp = static_cast<uint64_t>(endTime),
                                     .totalIssuesFound = 1,
                                     .success = true});
+}
+
+Expected<std::vector<Recommendation>, Error> FakeClientApi::GetRecommendations(
+    const ProjectId& projectId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    auto it = projects_.find(projectId);
+    if (it == projects_.end()) {
+        return Unexpected<Error>(Error{.message = "Project ID not found", .code = 404});
+    }
+
+    return recommendations_[projectId];
 }
 
 }  // namespace sentinel

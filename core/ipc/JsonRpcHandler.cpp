@@ -118,6 +118,22 @@ std::string JsonRpcHandler::handleRequest(const std::string& requestStr)
             } else {
                 return makeErrorResponse(id, res.error().code, res.error().message).serialize();
             }
+        } else if (method == "GetRecommendations") {
+            if (!params.is_object() || !params.contains("projectId")) {
+                return makeErrorResponse(id, -32602, "Invalid params: 'projectId' is required")
+                    .serialize();
+            }
+            ProjectId projectId(params["projectId"].as_string());
+            auto res = api_.GetRecommendations(projectId);
+            if (res.has_value()) {
+                std::vector<Json> recsJson;
+                for (const auto& rec : res.value()) {
+                    recsJson.push_back(serialize(rec));
+                }
+                return makeSuccessResponse(id, Json(recsJson)).serialize();
+            } else {
+                return makeErrorResponse(id, res.error().code, res.error().message).serialize();
+            }
         } else if (method == "GetProjects") {
             auto res = api_.GetProjects();
             if (res.has_value()) {

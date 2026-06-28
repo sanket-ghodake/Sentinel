@@ -22,7 +22,7 @@ import type {
 import { FileCode, Folder, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const isQt = typeof window.qt !== 'undefined';
-const client: ClientApi = isQt ? new QtBridgeClient() : new MockClient();
+export const client: ClientApi = isQt ? new QtBridgeClient() : new MockClient();
 
 const workspaceTitles: { [key: string]: string } = {
   home: 'Home Dashboard',
@@ -40,6 +40,7 @@ function App() {
   const [activeProjectId, setActiveProjectId] = useState('');
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const [isInvestigating, setIsInvestigating] = useState(false);
 
   // Shell Layout and Dialog States
   const [inspectorObject, setInspectorObject] = useState<InspectorObject | null>(null);
@@ -99,6 +100,9 @@ function App() {
 
   // Automatically select default inspector context when active workspace changes
   useEffect(() => {
+    if (activeWorkspace !== 'analyze') {
+      setIsInvestigating(false);
+    }
     if (activeWorkspace === 'home') {
       setInspectorObject({ type: 'home_context', data: {} });
     } else if (activeWorkspace === 'codebase') {
@@ -291,6 +295,8 @@ function App() {
             setActiveWorkspace={setActiveWorkspace}
             setInspectorObject={setInspectorObject}
             onProjectChange={handleProjectChange}
+            setSelectedIssueId={setSelectedIssueId}
+            setIsInvestigating={setIsInvestigating}
           />
         );
       }
@@ -658,6 +664,8 @@ function App() {
             isScanning={isScanning}
             onRunScan={handleRunScan}
             setActiveWorkspace={setActiveWorkspace}
+            isInvestigating={isInvestigating}
+            setIsInvestigating={setIsInvestigating}
           />
         );
       }

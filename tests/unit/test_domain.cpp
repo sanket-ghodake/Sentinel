@@ -147,6 +147,42 @@ void TestDomainStructures()
     assert(issue.status == sentinel::IssueStatus::Open);
 
     // Recommendation and Task
+    sentinel::Recommendation rec{
+        .id = sentinel::RecommendationId("rec-1"),
+        .title = "Fix SQL Injection",
+        .description = "Use parameterized bindings",
+        .origin = "cppcheck/sqlite-injection",
+        .fileId = "IpcServer.cpp",
+        .line = 42,
+        .matchedPattern = "string concatenation inside query",
+        .explanationSimple = "User input is directly inserted into database queries.",
+        .explanationTechnical = "SQL query constructed via string concatenation.",
+        .explanationExpert =
+            "Input is bound via raw string concatenation instead of parameterized placeholder "
+            "bindings.",
+        .confidenceScore = 98.0,
+        .confidenceLevel = "High",
+        .confidenceSignals = {"Rule certainty", "Local context"},
+        .safeAutomationLevel = "PREVIEW",
+        .previewCurrentCode = "sql += val;",
+        .previewSuggestedCode = "bind_text()",
+        .previewDiff = "- sql += val;\n+ bind_text()",
+        .rollbackSupport = true,
+        .whyNowReasons = {"Rule enabled yesterday"},
+        .blastRadiusAffectedFiles = 1,
+        .blastRadiusAffectedModule = "Database",
+        .blastRadiusPublicApiChanged = false,
+        .blastRadiusTestsImpacted = 2,
+        .blastRadiusBinaryCompatibility = "Unchanged",
+        .learningConcept = "SQL Injection",
+        .learningRationale = "Raw concatenation allows SQL command injection.",
+        .learningBestPractice = "Always use parameterized placeholder bindings.",
+        .learningReferences = {"OWASP Guide", "C++ guidelines"}};
+
+    assert(rec.confidenceScore == 98.0);
+    assert(rec.safeAutomationLevel == "PREVIEW");
+    assert(rec.blastRadiusAffectedFiles == 1);
+
     sentinel::Task task{.id = sentinel::TaskId("task-1"),
                         .type = "refactor",
                         .title = "Refactor database query interface",

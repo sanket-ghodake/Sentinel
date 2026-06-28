@@ -2,6 +2,7 @@
 
 #include "Json.h"
 #include "sentinel/Expected.h"
+#include "sentinel/Insights.h"
 #include "sentinel/Quality.h"
 #include "sentinel/Workspace.h"
 
@@ -143,6 +144,85 @@ inline Json serialize(const Issue& issue)
     obj["fix"] = serialize(issue.fix);
     obj["status"] = issueStatusToString(issue.status);
     obj["owner"] = issue.owner;
+    return Json(obj);
+}
+
+inline Json serialize(const Recommendation& rec)
+{
+    std::unordered_map<std::string, Json> obj;
+    obj["id"] = rec.id.value();
+    obj["title"] = rec.title;
+    obj["description"] = rec.description;
+    obj["origin"] = rec.origin;
+
+    // Evidence
+    std::unordered_map<std::string, Json> evidence;
+    evidence["fileId"] = rec.fileId;
+    evidence["line"] = rec.line;
+    evidence["matchedPattern"] = rec.matchedPattern;
+    obj["evidence"] = Json(evidence);
+
+    // Explanation
+    std::unordered_map<std::string, Json> explanation;
+    explanation["simple"] = rec.explanationSimple;
+    explanation["technical"] = rec.explanationTechnical;
+    explanation["expert"] = rec.explanationExpert;
+    obj["explanation"] = Json(explanation);
+
+    // Confidence
+    std::unordered_map<std::string, Json> confidence;
+    confidence["score"] = rec.confidenceScore;
+    confidence["level"] = rec.confidenceLevel;
+    std::vector<Json> confidenceSignals;
+    for (const auto& sig : rec.confidenceSignals) {
+        confidenceSignals.push_back(Json(sig));
+    }
+    confidence["signals"] = Json(confidenceSignals);
+    obj["confidence"] = Json(confidence);
+
+    obj["safeAutomationLevel"] = rec.safeAutomationLevel;
+
+    // Add estimatedEffort and estimatedImpact
+    obj["estimatedEffort"] = "2 minutes";
+    obj["estimatedImpact"] = "High";
+
+    // Preview
+    std::unordered_map<std::string, Json> preview;
+    preview["currentCode"] = rec.previewCurrentCode;
+    preview["suggestedCode"] = rec.previewSuggestedCode;
+    preview["diff"] = rec.previewDiff;
+    obj["preview"] = Json(preview);
+
+    obj["rollbackSupport"] = rec.rollbackSupport;
+
+    // Why Now
+    std::vector<Json> whyNow;
+    for (const auto& reason : rec.whyNowReasons) {
+        whyNow.push_back(Json(reason));
+    }
+    obj["whyNow"] = Json(whyNow);
+
+    // Blast Radius
+    std::unordered_map<std::string, Json> blastRadius;
+    blastRadius["affectedFiles"] = rec.blastRadiusAffectedFiles;
+    blastRadius["affectedModule"] = rec.blastRadiusAffectedModule;
+    blastRadius["publicApiChanged"] = rec.blastRadiusPublicApiChanged;
+    blastRadius["testsImpacted"] = rec.blastRadiusTestsImpacted;
+    blastRadius["binaryCompatibility"] = rec.blastRadiusBinaryCompatibility;
+    obj["blastRadius"] = Json(blastRadius);
+
+    // Learning Mode
+    std::unordered_map<std::string, Json> learningMode;
+    learningMode["concept"] = rec.learningConcept;
+    learningMode["rationale"] = rec.learningRationale;
+    learningMode["bestPractice"] = rec.learningBestPractice;
+    std::vector<Json> refs;
+    for (const auto& ref : rec.learningReferences) {
+        refs.push_back(Json(ref));
+    }
+    learningMode["references"] = Json(refs);
+    obj["learningMode"] = Json(learningMode);
+
     return Json(obj);
 }
 
