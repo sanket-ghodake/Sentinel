@@ -27,6 +27,14 @@ import {
   ToggleLeft,
   ToggleRight,
   Search,
+  GitBranch,
+  Play,
+  Plus,
+  History,
+  Sparkles,
+  ArrowRight,
+  Clock,
+  LayoutGrid,
 } from 'lucide-react';
 
 const isQt = typeof window.qt !== 'undefined';
@@ -108,6 +116,38 @@ function App() {
       document.documentElement.classList.remove('light-theme');
     }
   }, [theme]);
+
+  // Automatically select default inspector context when active workspace changes
+  useEffect(() => {
+    if (activeWorkspace === 'home') {
+      setInspectorObject({ type: 'home_context', data: {} });
+    } else if (activeWorkspace === 'projects') {
+      const activeProj = projects.find((p) => p.id === activeProjectId);
+      if (activeProj) {
+        setInspectorObject({ type: 'project', data: activeProj });
+      }
+    } else if (activeWorkspace === 'analyze') {
+      const iss = issues.find((i) => i.id === selectedIssueId) || issues[0];
+      if (iss) {
+        setSelectedIssueId(iss.id);
+        setInspectorObject({ type: 'issue', data: iss });
+      }
+    } else if (activeWorkspace === 'extensions') {
+      setInspectorObject({
+        type: 'plugin',
+        data: {
+          name: 'cppcheck',
+          version: '2.13',
+          description:
+            'Static analysis tool for C/C++ code. Detects bugs, memory leaks, and undefined behavior.',
+          status: 'Active',
+          category: 'Static Analyzer',
+        },
+      });
+    } else {
+      setInspectorObject(null);
+    }
+  }, [activeWorkspace, projects, activeProjectId]);
 
   // Elapsed scan time ticker
   useEffect(() => {
@@ -260,234 +300,691 @@ function App() {
     }
 
     switch (activeWorkspace) {
-      case 'home':
-        return (
-          <>
-            <HealthCard project={activeProject} />
+      case 'home': {
+        const openIssues = issues.filter((i) => i.status === 'Open');
+        const blockingIssues = openIssues.filter(
+          (i) => i.severity === 'Critical' || i.severity === 'High',
+        );
+        const safeFixes = openIssues.filter((i) => i.fix);
+        const estFixTime = blockingIssues.length * 4 + safeFixes.length * 1; // estimate in minutes
 
-            {/* Recommendations Grid */}
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+            {/* Section 1: Greeting & Primary CTA */}
+            <div
+              className="sds-card"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background:
+                  'linear-gradient(90deg, rgba(99,102,241,0.08) 0%, rgba(18,20,28,0) 100%)',
+                borderLeft: '4px solid var(--sds-primary)',
+                padding: 'var(--sds-space-24)',
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--sds-primary)',
+                    fontWeight: 600,
+                    letterSpacing: '1px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Daily Workspace
+                </span>
+                <h1
+                  style={{
+                    fontSize: '28px',
+                    fontWeight: 600,
+                    marginTop: '4px',
+                    color: 'var(--sds-text-heading)',
+                  }}
+                >
+                  Good Morning, Sanket
+                </h1>
+                <p style={{ fontSize: '14px', color: 'var(--sds-text-muted)', marginTop: '2px' }}>
+                  Welcome back. All offline analyzer pipelines are healthy and ready.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveWorkspace('analyze')}
+                className="sds-btn sds-btn-primary"
+                style={{ height: 'fit-content' }}
+              >
+                Continue Working <ArrowRight size={14} />
+              </button>
+            </div>
+
+            {/* Main grid for sections 2, 3, 4, 5 */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1.5fr 1fr',
+                gridTemplateColumns: '1.2fr 1fr',
                 gap: 'var(--sds-space-24)',
-                flex: 1,
               }}
             >
-              {/* Prioritized Tasks Card */}
-              <div
-                className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-              >
-                <h3
+              {/* Left Column: Today's Focus, Pinned Projects, Quick Actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+                {/* Section 3: Today's Focus */}
+                <div
+                  className="sds-card"
                   style={{
-                    borderBottom: '1px solid var(--sds-border)',
-                    paddingBottom: 'var(--sds-space-12)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--sds-space-16)',
                   }}
                 >
-                  Prioritized Action Items
-                </h3>
-                {issues.filter((i) => i.status === 'Open').length === 0 ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Sparkles size={16} color="var(--sds-warning)" />
+                      <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Today's Focus</h3>
+                    </div>
+                    <span className="sds-badge sds-badge-warning">Recommended Plan</span>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      padding: '12px',
+                      backgroundColor: 'rgba(0,0,0,0.15)',
+                      borderRadius: 'var(--sds-radius-md)',
+                      border: '1px solid var(--sds-border)',
+                    }}
+                  >
+                    <div>
+                      <h4
+                        style={{
+                          fontSize: '13px',
+                          color: 'var(--sds-text-heading)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {activeProject.name} Workspace
+                      </h4>
+                      <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            color: 'var(--sds-text)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: 'var(--sds-danger)',
+                            }}
+                          ></span>
+                          <strong>{blockingIssues.length}</strong> Blocking Issues
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            color: 'var(--sds-text)',
+                          }}
+                        >
+                          <Wrench size={12} color="var(--sds-primary)" />
+                          <strong>{safeFixes.length}</strong> Safe Fixes Available
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '12px',
+                            color: 'var(--sds-text-muted)',
+                          }}
+                        >
+                          <Clock size={12} />
+                          Est: {estFixTime > 0 ? `${estFixTime} min` : '0 min'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setActiveWorkspace('analyze')}
+                      className="sds-btn sds-btn-secondary"
+                      style={{ fontSize: '12px', padding: '6px 12px' }}
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 2: Pinned Projects */}
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                >
+                  <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Pinned Projects</h3>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 'var(--sds-space-16)',
+                    }}
+                  >
+                    {/* Project Card 1: Active Project */}
+                    <div
+                      className="sds-card"
+                      style={{
+                        padding: 'var(--sds-space-16)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        border: '1px solid var(--sds-primary)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.02)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div>
+                          <h4
+                            style={{
+                              fontSize: '14px',
+                              color: 'var(--sds-text-heading)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {activeProject.name}
+                          </h4>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: 'var(--sds-text-muted)',
+                              fontFamily: 'var(--sds-font-mono)',
+                            }}
+                          >
+                            branch: {activeProject.branch}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '15px',
+                            fontWeight: 700,
+                            color:
+                              activeProject.quality >= 90
+                                ? 'var(--sds-success)'
+                                : 'var(--sds-warning)',
+                          }}
+                        >
+                          {Math.round(activeProject.quality)}%
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: 'auto',
+                          paddingTop: '8px',
+                          borderTop: '1px solid var(--sds-border)',
+                        }}
+                      >
+                        <span className="sds-badge sds-badge-success" style={{ fontSize: '10px' }}>
+                          Active
+                        </span>
+                        <button
+                          onClick={() => setActiveWorkspace('analyze')}
+                          className="sds-btn sds-btn-link"
+                          style={{ fontSize: '12px' }}
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Project Card 2: Motor SDK Mock Project */}
+                    <div
+                      className="sds-card"
+                      style={{
+                        padding: 'var(--sds-space-16)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        opacity: 0.85,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}
+                      >
+                        <div>
+                          <h4
+                            style={{
+                              fontSize: '14px',
+                              color: 'var(--sds-text-heading)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Motor SDK
+                          </h4>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: 'var(--sds-text-muted)',
+                              fontFamily: 'var(--sds-font-mono)',
+                            }}
+                          >
+                            branch: dev
+                          </span>
+                        </div>
+                        <span
+                          style={{ fontSize: '15px', fontWeight: 700, color: 'var(--sds-warning)' }}
+                        >
+                          87%
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginTop: 'auto',
+                          paddingTop: '8px',
+                          borderTop: '1px solid var(--sds-border)',
+                        }}
+                      >
+                        <span className="sds-badge sds-badge-warning" style={{ fontSize: '10px' }}>
+                          Needs Review
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--sds-text-muted)' }}>
+                          Inactive
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 6: Quick Actions */}
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                >
+                  <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Quick Actions</h3>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                      gap: 'var(--sds-space-12)',
+                    }}
+                  >
+                    <button
+                      onClick={() => setIsPaletteOpen(true)}
+                      className="sds-btn sds-btn-secondary"
+                      style={{
+                        fontSize: '12px',
+                        padding: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <LayoutGrid size={16} />
+                      Open Palette
+                    </button>
+                    <button
+                      onClick={handleRunScan}
+                      disabled={isScanning}
+                      className="sds-btn sds-btn-secondary"
+                      style={{
+                        fontSize: '12px',
+                        padding: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Play size={16} color="var(--sds-success)" />
+                      {isScanning ? 'Scanning...' : 'Run Scan'}
+                    </button>
+                    <button
+                      onClick={() => setActiveWorkspace('settings')}
+                      className="sds-btn sds-btn-secondary"
+                      style={{
+                        fontSize: '12px',
+                        padding: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Wrench size={16} />
+                      Configure Rules
+                    </button>
+                    <button
+                      onClick={() => setActiveWorkspace('extensions')}
+                      className="sds-btn sds-btn-secondary"
+                      style={{
+                        fontSize: '12px',
+                        padding: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <Plus size={16} />
+                      Browse Plugins
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Activity, Recommendations, Recent Projects */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-24)' }}>
+                {/* Section 4: Activity */}
+                <div
+                  className="sds-card"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <History size={16} color="var(--sds-primary)" />
+                    <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Activity</h3>
+                  </div>
                   <div
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flex: 1,
-                      padding: 'var(--sds-space-24)',
-                      gap: 'var(--sds-space-12)',
+                      gap: '12px',
+                      borderLeft: '1px solid var(--sds-border)',
+                      paddingLeft: '16px',
+                      marginLeft: '8px',
+                      marginTop: '4px',
                     }}
                   >
-                    <ShieldCheck size={40} color="var(--sds-success)" />
-                    <span style={{ color: 'var(--sds-success)', fontWeight: 500 }}>
-                      Excellent. Project passed all enabled checks.
-                    </span>
+                    <div style={{ position: 'relative' }}>
+                      <span
+                        style={{
+                          position: 'absolute',
+                          left: '-21px',
+                          top: '4px',
+                          width: '9px',
+                          height: '9px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--sds-success)',
+                          border: '2px solid var(--sds-surface)',
+                        }}
+                      ></span>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'var(--sds-text-heading)',
+                        }}
+                      >
+                        Yesterday
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--sds-text-muted)',
+                          marginTop: '2px',
+                        }}
+                      >
+                        12 safe fixes applied. Quality score improved by{' '}
+                        <strong style={{ color: 'var(--sds-success)' }}>+2%</strong>. Security guard
+                        verified clean.
+                      </div>
+                    </div>
+
+                    <div style={{ position: 'relative' }}>
+                      <span
+                        style={{
+                          position: 'absolute',
+                          left: '-21px',
+                          top: '4px',
+                          width: '9px',
+                          height: '9px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--sds-info)',
+                          border: '2px solid var(--sds-surface)',
+                        }}
+                      ></span>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'var(--sds-text-heading)',
+                        }}
+                      >
+                        2 days ago
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--sds-text-muted)',
+                          marginTop: '2px',
+                        }}
+                      >
+                        Initial repository scan completed. Detected 2 blocking issues and 12 code
+                        styling warnings.
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
-                  >
-                    {issues
-                      .filter((i) => i.status === 'Open')
-                      .map((issue) => (
+                </div>
+
+                {/* Section 5: Recommendations */}
+                <div
+                  className="sds-card"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                >
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Recommendations</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div
+                      onClick={() => setActiveWorkspace('fix')}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        backgroundColor: 'rgba(255,255,255,0.01)',
+                        border: '1px solid var(--sds-border)',
+                        borderRadius: 'var(--sds-radius-md)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.borderColor = 'var(--sds-border-hover)')
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.borderColor = 'var(--sds-border)')
+                      }
+                    >
+                      <div>
                         <div
-                          key={issue.id}
-                          onClick={() => {
-                            setSelectedIssueId(issue.id);
-                            setInspectorObject({ type: 'issue', data: issue });
-                          }}
                           style={{
-                            padding: 'var(--sds-space-12) var(--sds-space-16)',
-                            backgroundColor: 'rgba(0,0,0,0.15)',
-                            border: `1px solid ${selectedIssueId === issue.id ? 'var(--sds-primary)' : 'var(--sds-border)'}`,
-                            borderRadius: 'var(--sds-radius-md)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            transition: 'all var(--sds-transition-fast)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--sds-text-heading)',
                           }}
                         >
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span
-                                className={`sds-badge ${
-                                  issue.severity === 'Critical' || issue.severity === 'High'
-                                    ? 'sds-badge-danger'
-                                    : 'sds-badge-warning'
-                                }`}
-                              >
-                                {issue.severity}
-                              </span>
-                              <span
-                                style={{
-                                  fontWeight: 600,
-                                  color: 'var(--sds-text-heading)',
-                                  fontSize: '13px',
-                                }}
-                              >
-                                {issue.title}
-                              </span>
-                            </div>
-                            <div
-                              style={{
-                                fontSize: '11px',
-                                color: 'var(--sds-text-muted)',
-                                marginTop: '4px',
-                                fontFamily: 'var(--sds-font-mono)',
-                              }}
-                            >
-                              {issue.location.fileId}:{issue.location.line}
-                            </div>
-                          </div>
-                          <Wrench size={16} color="var(--sds-text-muted)" />
+                          Apply Formatting
                         </div>
-                      ))}
-                  </div>
-                )}
-              </div>
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--sds-text-muted)',
+                            marginTop: '2px',
+                          }}
+                        >
+                          Runs Clang-Format inline
+                        </div>
+                      </div>
+                      <span
+                        style={{ fontSize: '11px', color: 'var(--sds-primary)', fontWeight: 500 }}
+                      >
+                        20 sec
+                      </span>
+                    </div>
 
-              {/* Branch / Code Status Card */}
-              <div
-                className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
-              >
-                <h3
-                  style={{
-                    borderBottom: '1px solid var(--sds-border)',
-                    paddingBottom: 'var(--sds-space-12)',
-                  }}
-                >
-                  Workspace Quality Factors
-                </h3>
+                    <div
+                      onClick={handleRunScan}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        backgroundColor: 'rgba(255,255,255,0.01)',
+                        border: '1px solid var(--sds-border)',
+                        borderRadius: 'var(--sds-radius-md)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.borderColor = 'var(--sds-border-hover)')
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.borderColor = 'var(--sds-border)')
+                      }
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--sds-text-heading)',
+                          }}
+                        >
+                          Run Analyzer Scan
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--sds-text-muted)',
+                            marginTop: '2px',
+                          }}
+                        >
+                          Verify 5 modified local files
+                        </div>
+                      </div>
+                      <span
+                        style={{ fontSize: '11px', color: 'var(--sds-primary)', fontWeight: 500 }}
+                      >
+                        12 changed
+                      </span>
+                    </div>
+
+                    <div
+                      onClick={() => setActiveWorkspace('analyze')}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        backgroundColor: 'rgba(255,255,255,0.01)',
+                        border: '1px solid var(--sds-border)',
+                        borderRadius: 'var(--sds-radius-md)',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.borderColor = 'var(--sds-border-hover)')
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.borderColor = 'var(--sds-border)')
+                      }
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: 'var(--sds-text-heading)',
+                          }}
+                        >
+                          Review Memory Issues
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--sds-text-muted)',
+                            marginTop: '2px',
+                          }}
+                        >
+                          Investigate 2 potential leaks
+                        </div>
+                      </div>
+                      <span
+                        style={{ fontSize: '11px', color: 'var(--sds-danger)', fontWeight: 500 }}
+                      >
+                        2 Issues
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 7: Recent Projects */}
                 <div
-                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
                 >
-                  <div
-                    onClick={() =>
-                      setInspectorObject({
-                        type: 'recommendation',
-                        data: {
-                          title: 'Sanitize Database SQL Inputs',
-                          description:
-                            'C++ SQLite database queries must use parameterized placeholders binding variables instead of raw string concatenations to prevent security SQL injection risks.',
-                          category: 'Security Compliance',
-                          effort: '10 mins',
-                          target: 'core/database/',
-                        },
-                      })
-                    }
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px',
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)')
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <span>Security Risk:</span>
-                    <span
+                  <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Recent Projects</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div
                       style={{
-                        color: issues.some((i) => i.category === 'Security' && i.status === 'Open')
-                          ? 'var(--sds-danger)'
-                          : 'var(--sds-success)',
-                        fontWeight: 600,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '6px 12px',
+                        borderBottom: '1px solid rgba(255,255,255,0.02)',
+                        fontSize: '12px',
                       }}
                     >
-                      {issues.some((i) => i.category === 'Security' && i.status === 'Open')
-                        ? 'Vulnerabilities'
-                        : 'Safe / Guarded'}
-                    </span>
-                  </div>
-                  <div
-                    onClick={() =>
-                      setInspectorObject({
-                        type: 'recommendation',
-                        data: {
-                          title: 'Format Files with Clang-Format',
-                          description:
-                            'C++ format rules check failed on selected lines. Formatting linter recommends applying formatting correction to staged source code.',
-                          category: 'Style Conformance',
-                          effort: '5 mins',
-                          target: 'all/',
-                        },
-                      })
-                    }
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px',
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)')
-                    }
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    <span>Style Conformance:</span>
-                    <span
+                      <span style={{ fontWeight: 500, color: 'var(--sds-text-heading)' }}>
+                        {activeProject.name}
+                      </span>
+                      <span style={{ color: 'var(--sds-text-muted)' }}>Yesterday</span>
+                      <span style={{ fontWeight: 600, color: 'var(--sds-success)' }}>
+                        {Math.round(activeProject.quality)}%
+                      </span>
+                    </div>
+                    <div
                       style={{
-                        color:
-                          issues.filter((i) => i.category === 'Style' && i.status === 'Open')
-                            .length > 0
-                            ? 'var(--sds-warning)'
-                            : 'var(--sds-success)',
-                        fontWeight: 600,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '6px 12px',
+                        borderBottom: '1px solid rgba(255,255,255,0.02)',
+                        fontSize: '12px',
+                        opacity: 0.8,
                       }}
                     >
-                      {issues.filter((i) => i.category === 'Style' && i.status === 'Open').length}{' '}
-                      Warnings
-                    </span>
-                  </div>
-                  <div
-                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}
-                  >
-                    <span>Active Analyzers:</span>
-                    <span style={{ color: 'var(--sds-text-heading)', fontWeight: 600 }}>
-                      {activeProject.plugins.length} Plugins Enabled
-                    </span>
-                  </div>
-                  <div
-                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}
-                  >
-                    <span>Owner / Author:</span>
-                    <span style={{ color: 'var(--sds-text-heading)', fontWeight: 600 }}>
-                      {activeProject.owner}
-                    </span>
+                      <span style={{ fontWeight: 500, color: 'var(--sds-text-heading)' }}>
+                        Motor SDK
+                      </span>
+                      <span style={{ color: 'var(--sds-text-muted)' }}>2 days ago</span>
+                      <span style={{ fontWeight: 600, color: 'var(--sds-warning)' }}>87%</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         );
+      }
 
       case 'projects':
         return (

@@ -30,7 +30,8 @@ export interface InspectorObject {
     | 'plugin'
     | 'report'
     | 'recommendation'
-    | 'profile';
+    | 'profile'
+    | 'home_context';
   data: unknown;
 }
 
@@ -649,6 +650,141 @@ export const Inspector: React.FC<InspectorProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <button className="sds-btn sds-btn-secondary" style={{ width: '100%' }}>
               View Developer Dashboard
+            </button>
+          </div>
+        );
+      }
+      break;
+    }
+
+    case 'home_context': {
+      header = renderHeader(<Info size={14} />, 'Home Workspace', 'Overview & Context');
+
+      if (activeTab === 'summary') {
+        content = (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div
+              style={{
+                backgroundColor: 'rgba(99, 102, 241, 0.05)',
+                border: '1px solid rgba(99, 102, 241, 0.15)',
+                borderRadius: 'var(--sds-radius-md)',
+                padding: 'var(--sds-space-12)',
+              }}
+            >
+              <h4
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--sds-primary)',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  marginBottom: '4px',
+                }}
+              >
+                Tip of the Day
+              </h4>
+              <p style={{ fontSize: '12px', lineHeight: '1.4', color: 'var(--sds-text)' }}>
+                Avoid copying collections in loops. Use range-based for loops with{' '}
+                <code>const auto&</code> to avoid unnecessary performance overhead.
+              </p>
+            </div>
+
+            <div>
+              <h4
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--sds-text-muted)',
+                  textTransform: 'uppercase',
+                  marginBottom: '6px',
+                }}
+              >
+                Plugin Updates Available
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '6px 0',
+                    borderBottom: '1px solid var(--sds-border)',
+                  }}
+                >
+                  <span
+                    style={{ fontSize: '12px', fontWeight: 500, color: 'var(--sds-text-heading)' }}
+                  >
+                    clang-tidy
+                  </span>
+                  <span className="sds-badge sds-badge-info">v17.0.1</span>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '6px 0',
+                  }}
+                >
+                  <span
+                    style={{ fontSize: '12px', fontWeight: 500, color: 'var(--sds-text-heading)' }}
+                  >
+                    cppcheck
+                  </span>
+                  <span className="sds-badge sds-badge-info">v2.14</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--sds-text-muted)',
+                  textTransform: 'uppercase',
+                  marginBottom: '6px',
+                }}
+              >
+                Documentation Quick Links
+              </h4>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}
+              >
+                <span
+                  style={{
+                    color: 'var(--sds-primary)',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Sentinel C++ Style Guide
+                </span>
+                <span
+                  style={{
+                    color: 'var(--sds-primary)',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Offline Compiler Setup
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      } else if (activeTab === 'properties') {
+        content = renderProperties([
+          { label: 'Platform Version', value: 'v0.1.0' },
+          { label: 'Docker Environment', value: 'Connected' },
+          { label: 'Active Analyzers', value: '3 Plugins' },
+          { label: 'Local SQLite Cache', value: 'Ready' },
+        ]);
+      } else if (activeTab === 'actions') {
+        content = (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button className="sds-btn sds-btn-secondary" style={{ width: '100%' }}>
+              Browse Rule Directory
+            </button>
+            <button className="sds-btn sds-btn-secondary" style={{ width: '100%' }}>
+              Export Global Report
             </button>
           </div>
         );
