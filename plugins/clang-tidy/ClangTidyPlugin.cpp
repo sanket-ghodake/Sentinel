@@ -1,7 +1,14 @@
 #include "ClangTidyPlugin.h"
 
+#include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
+
+#include "core/compiler/CompileCommandsParser.h"
+#include "core/runtime/ProcessRunner.h"
+
+namespace fs = std::filesystem;
 
 namespace sentinel {
 
@@ -61,26 +68,123 @@ Expected<std::vector<Rule>, Error> ClangTidyRulePack::GetSupportedRules()
 
 // --- ClangTidyRuleRunner ---
 
-Expected<std::string, Error> ClangTidyRuleRunner::Run(const ProjectId& /*projectId*/,
-                                                      const std::string& /*projectPath*/,
+Expected<std::string, Error> ClangTidyRuleRunner::Run(const ProjectId& projectId,
+                                                      const std::string& projectPath,
                                                       const std::vector<std::string>& filePaths,
                                                       const std::vector<RuleId>& activeRules)
 {
-    std::string output;
-    for (const auto& filePath : filePaths) {
-        for (const auto& ruleId : activeRules) {
-            if (ruleId.value() == "modernize-use-override") {
-                output += filePath +
-                          ":12:5: warning: Virtual function inherits base method but lacks "
-                          "override [modernize-use-override]\n";
-            } else if (ruleId.value() == "performance-unnecessary-value-param") {
-                output += filePath +
-                          ":45:18: warning: std::string parameter is copied. Pass by const "
-                          "reference [performance-unnecessary-value-param]\n";
+    if (filePaths.empty()) {
+        return std::string("");
+    }
+
+    // Determine the checks to enable
+    std::string checks = "-*";
+    for (const auto& rule : activeRules) {
+        std::string ruleVal = rule.value();
+        if (ruleVal == "clang-diagnostic-error") {
+            checks += ",clang-diagnostic-*";
+        } else {
+            checks += "," + ruleVal;
+        }
+    }
+    // If activeRules is empty, run with default checks we support
+    if (activeRules.empty()) {
+        checks += ",modernize-use-override,performance-unnecessary-value-param,clang-diagnostic-*";
+    }
+
+    // Try to find and parse compile_commands.json
+    std::vector<CompileCommand> compileCommands;
+    bool hasDb = false;
+
+    std::vector<std::string> possiblePaths = {projectPath + "/compile_commands.json",
+                                              projectPath + "/build/compile_commands.json"};
+
+    for (const auto& path : possiblePaths) {
+        if (fs::exists(path)) {
+            auto parsed = CompileCommandsParser::Parse(path);
+            if (parsed.has_value()) {
+                compileCommands = std::move(parsed.value());
+                hasDb = true;
+                break;
             }
         }
     }
-    return output;
+
+    std::string combinedOutput;
+
+    // Run clang-tidy for each file with its specific compilation flags
+    for (const auto& filePath : filePaths) {
+        // Resolve absolute path for matching
+        std::string absFilePath = filePath;
+        try {
+            if (fs::exists(filePath)) {
+                absFilePath = fs::absolute(filePath).string();
+            }
+        } catch (...) {
+            // Ignore errors resolving path
+        }
+
+        std::vector<std::string> compileArgs;
+        bool foundMatch = false;
+
+        if (hasDb) {
+            for (const auto& cmd : compileCommands) {
+                // Resolve db file path relative to its directory if needed, or check absolute paths
+                std::string cmdFileAbs = cmd.file;
+                try {
+                    fs::path p(cmd.file);
+                    if (p.is_relative()) {
+                        p = fs::path(cmd.directory) / p;
+                    }
+                    cmdFileAbs = fs::absolute(p).string();
+                } catch (...) {
+                    // Ignore path resolution errors
+                }
+
+                if (cmdFileAbs == absFilePath || cmd.file == filePath) {
+                    // Found matching compile command!
+                    // Extract compile arguments (skip the compiler binary itself at args[0])
+                    if (cmd.arguments.size() > 1) {
+                        for (size_t i = 1; i < cmd.arguments.size(); ++i) {
+                            // Skip the file path itself to prevent duplicate inputs
+                            if (cmd.arguments[i] != cmd.file && cmd.arguments[i] != filePath) {
+                                compileArgs.push_back(cmd.arguments[i]);
+                            }
+                        }
+                    }
+                    foundMatch = true;
+                    break;
+                }
+            }
+        }
+
+        // Build command line arguments for ProcessRunner::RunNative
+        std::vector<std::string> args;
+        args.push_back("-checks=" + checks);
+        args.push_back(filePath);
+        args.push_back("--");
+
+        if (foundMatch && !compileArgs.empty()) {
+            for (const auto& arg : compileArgs) {
+                args.push_back(arg);
+            }
+        } else {
+            // Fallback default compilation flags
+            args.push_back("-std=c++20");
+            args.push_back("-Isdk/include");
+            args.push_back("-I.");
+        }
+
+        auto res = ProcessRunner::RunNative("clang-tidy", args);
+        if (!res.has_value()) {
+            // If command execution fails (e.g. clang-tidy not found), propagate the error
+            return Unexpected<Error>(res.error());
+        }
+
+        combinedOutput += res.value();
+    }
+
+    return combinedOutput;
 }
 
 // --- ClangTidyParser ---

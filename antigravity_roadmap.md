@@ -28,13 +28,13 @@ This roadmap tracks the transition of the Sentinel platform to the **V2 Engineer
 
 ## 🔧 Phase 9: Real LLVM Compiler & Cppcheck Integration
 
-* [ ] **Real Clang-Tidy Execution**
-  * [ ] Refactor Clang-Tidy Runner to spawn local or Dockerized `clang-tidy` binary.
-  * [ ] Connect compilation database arguments for targeted file scanning.
-* [ ] **Real Cppcheck Execution**
-  * [ ] Refactor Cppcheck Runner to spawn local or Dockerized `cppcheck` binary.
-* [ ] **Output Parser Validation**
-  * [ ] Test parser adapters against real CLI diagnostics instead of mock fixtures.
+* [x] **Real Clang-Tidy Execution**
+  * [x] Refactor Clang-Tidy Runner to spawn local or Dockerized `clang-tidy` binary.
+  * [x] Connect compilation database arguments for targeted file scanning.
+* [x] **Real Cppcheck Execution**
+  * [x] Refactor Cppcheck Runner to spawn local or Dockerized `cppcheck` binary.
+* [x] **Output Parser Validation**
+  * [x] Test parser adapters against real CLI diagnostics instead of mock fixtures.
 
 ---
 

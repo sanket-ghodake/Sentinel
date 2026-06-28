@@ -1,7 +1,44 @@
 #include <cassert>
+#include <fstream>
 #include <iostream>
+#include <string>
+#include <vector>
 
 #include "core/analyzer/PluginLoader.h"
+
+// Helper to create a temporary test C++ file with violations
+void CreateTempTestFile(const std::string& path)
+{
+    std::ofstream out(path);
+    out << R"(#include <string>
+
+struct Base {
+    virtual ~Base() = default;
+    virtual void doSomething() {}
+};
+
+struct Derived : public Base {
+    // Missing override keyword - triggers modernize-use-override
+    virtual void doSomething() {}
+};
+
+// Parameter passed by value instead of const reference - triggers performance-unnecessary-value-param
+void checkString(std::string value) {
+    (void)value;
+}
+
+void testIssues() {
+    // Null pointer dereference - triggers cppcheck-nullPointer
+    int* p = nullptr;
+    *p = 42;
+
+    // Memory leak - triggers cppcheck-memleak
+    int* arr = new int[10];
+    // delete[] arr; // missing delete triggers memleak
+}
+)";
+    out.close();
+}
 
 void TestLoadInvalidPlugin()
 {
@@ -35,7 +72,23 @@ void TestClangTidyPlugin(const std::string& soPath)
     assert(rulesRes.value().size() == 3);
     assert(rulesRes.value()[0].id.value() == "clang-diagnostic-error");
 
-    std::vector<std::string> files = {"src/main.cpp", "src/helper.h"};
+    // Write temp files to check
+    std::string tempCpp = "temp_test_analysis_clang.cpp";
+    CreateTempTestFile(tempCpp);
+
+    // Create a temp compile_commands.json
+    std::string dbPath = "compile_commands.json";
+    std::ofstream dbOut(dbPath);
+    dbOut << R"([
+        {
+            "directory": ".",
+            "file": "temp_test_analysis_clang.cpp",
+            "arguments": ["g++", "-c", "temp_test_analysis_clang.cpp", "-std=c++20"]
+        }
+    ])";
+    dbOut.close();
+
+    std::vector<std::string> files = {tempCpp};
     std::vector<sentinel::RuleId> activeRules = {
         sentinel::RuleId("modernize-use-override"),
         sentinel::RuleId("performance-unnecessary-value-param")};
@@ -45,14 +98,30 @@ void TestClangTidyPlugin(const std::string& soPath)
     auto parser = plugin->GetParser();
     assert(parser != nullptr);
 
-    auto runRes =
-        runner->Run(sentinel::ProjectId("test-proj"), "/workspace/test", files, activeRules);
+    auto runRes = runner->Run(sentinel::ProjectId("test-proj"), ".", files, activeRules);
+
+    // Clean up temporary test files
+    std::remove(tempCpp.c_str());
+    std::remove(dbPath.c_str());
+
     assert(runRes.has_value());
 
     auto parseRes = parser->Parse(runRes.value(), sentinel::ProjectId("test-proj"));
     assert(parseRes.has_value());
-    // 2 files x 2 active rules = 4 issues
-    assert(parseRes.value().size() == 4);
+
+    // Verify that at least override and unnecessary-value-param were detected
+    bool foundOverride = false;
+    bool foundParam = false;
+    for (const auto& issue : parseRes.value()) {
+        if (issue.ruleId.value() == "modernize-use-override") {
+            foundOverride = true;
+        }
+        if (issue.ruleId.value() == "performance-unnecessary-value-param") {
+            foundParam = true;
+        }
+    }
+    assert(foundOverride);
+    assert(foundParam);
 
     std::cout << "Clang-Tidy plugin test passed!" << std::endl;
 }
@@ -81,7 +150,11 @@ void TestCppcheckPlugin(const std::string& soPath)
     assert(rulesRes.value().size() == 3);
     assert(rulesRes.value()[0].id.value() == "cppcheck-nullPointer");
 
-    std::vector<std::string> files = {"src/main.cpp"};
+    // Write temp files to check
+    std::string tempCpp = "temp_test_analysis_cppcheck.cpp";
+    CreateTempTestFile(tempCpp);
+
+    std::vector<std::string> files = {tempCpp};
     std::vector<sentinel::RuleId> activeRules = {sentinel::RuleId("cppcheck-nullPointer"),
                                                  sentinel::RuleId("cppcheck-memleak")};
 
@@ -90,14 +163,29 @@ void TestCppcheckPlugin(const std::string& soPath)
     auto parser = plugin->GetParser();
     assert(parser != nullptr);
 
-    auto runRes =
-        runner->Run(sentinel::ProjectId("test-proj"), "/workspace/test", files, activeRules);
+    auto runRes = runner->Run(sentinel::ProjectId("test-proj"), ".", files, activeRules);
+
+    // Clean up temporary test files
+    std::remove(tempCpp.c_str());
+
     assert(runRes.has_value());
 
     auto parseRes = parser->Parse(runRes.value(), sentinel::ProjectId("test-proj"));
     assert(parseRes.has_value());
-    // 1 file x 2 active rules = 2 issues
-    assert(parseRes.value().size() == 2);
+
+    // Verify that at least nullPointer and memleak were detected
+    bool foundNullPointer = false;
+    bool foundMemleak = false;
+    for (const auto& issue : parseRes.value()) {
+        if (issue.ruleId.value() == "cppcheck-nullPointer") {
+            foundNullPointer = true;
+        }
+        if (issue.ruleId.value() == "cppcheck-memleak") {
+            foundMemleak = true;
+        }
+    }
+    assert(foundNullPointer);
+    assert(foundMemleak);
 
     std::cout << "Cppcheck plugin test passed!" << std::endl;
 }

@@ -5,10 +5,10 @@ set -e
 rm -f sentinel_cache.db
 
 echo "=== Building Plugins ==="
-g++ -std=c++20 -shared -fPIC -o plugins/clang-tidy/libsentinel-clang-tidy.so plugins/clang-tidy/ClangTidyPlugin.cpp -Isdk/include -I.
+g++ -std=c++20 -shared -fPIC -o plugins/clang-tidy/libsentinel-clang-tidy.so plugins/clang-tidy/ClangTidyPlugin.cpp core/runtime/ProcessRunner.cpp core/compiler/CompileCommandsParser.cpp -Isdk/include -I.
 echo "Built ClangTidy plugin"
 
-g++ -std=c++20 -shared -fPIC -o plugins/cppcheck/libsentinel-cppcheck.so plugins/cppcheck/CppcheckPlugin.cpp -Isdk/include -I.
+g++ -std=c++20 -shared -fPIC -o plugins/cppcheck/libsentinel-cppcheck.so plugins/cppcheck/CppcheckPlugin.cpp core/runtime/ProcessRunner.cpp -Isdk/include -I.
 echo "Built Cppcheck plugin"
 
 echo "=== Building Unit Tests ==="

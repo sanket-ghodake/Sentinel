@@ -1,7 +1,12 @@
 #include "CppcheckPlugin.h"
 
+#include <filesystem>
 #include <iostream>
 #include <sstream>
+
+#include "core/runtime/ProcessRunner.h"
+
+namespace fs = std::filesystem;
 
 namespace sentinel {
 
@@ -61,26 +66,45 @@ Expected<std::vector<Rule>, Error> CppcheckRulePack::GetSupportedRules()
 
 // --- CppcheckRuleRunner ---
 
-Expected<std::string, Error> CppcheckRuleRunner::Run(const ProjectId& /*projectId*/,
-                                                     const std::string& /*projectPath*/,
+Expected<std::string, Error> CppcheckRuleRunner::Run(const ProjectId& projectId,
+                                                     const std::string& projectPath,
                                                      const std::vector<std::string>& filePaths,
                                                      const std::vector<RuleId>& activeRules)
 {
-    std::string output;
-    for (const auto& filePath : filePaths) {
-        for (const auto& ruleId : activeRules) {
-            if (ruleId.value() == "cppcheck-nullPointer") {
-                output += "[" + filePath +
-                          ":88]: (error) Nullpointer Dereference: Pointer is dereferenced before "
-                          "null check is performed. [cppcheck-nullPointer]\n";
-            } else if (ruleId.value() == "cppcheck-memleak") {
-                output += "[" + filePath +
-                          ":120]: (warning) Memory Leak: Memory allocated with new[] is not "
-                          "released before exit. [cppcheck-memleak]\n";
-            }
+    if (filePaths.empty()) {
+        return std::string("");
+    }
+
+    // Build command line arguments for cppcheck
+    std::vector<std::string> args;
+    args.push_back(
+        "--template=[{file}:{line}]: ({severity}) cppcheck-{id}: {message} [cppcheck-{id}]");
+
+    // Enable all rules
+    args.push_back("--enable=all");
+
+    // Check if compile_commands.json exists, and if so, pass via --project
+    std::vector<std::string> possiblePaths = {projectPath + "/compile_commands.json",
+                                              projectPath + "/build/compile_commands.json"};
+
+    for (const auto& path : possiblePaths) {
+        if (fs::exists(path)) {
+            args.push_back("--project=" + path);
+            break;
         }
     }
-    return output;
+
+    // Add individual file paths to scan
+    for (const auto& filePath : filePaths) {
+        args.push_back(filePath);
+    }
+
+    auto res = ProcessRunner::RunNative("cppcheck", args);
+    if (!res.has_value()) {
+        return Unexpected<Error>(res.error());
+    }
+
+    return res.value();
 }
 
 // --- CppcheckParser ---
