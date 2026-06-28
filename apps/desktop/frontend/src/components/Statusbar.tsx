@@ -1,16 +1,20 @@
 import React from 'react';
-import { Terminal, Shield, RefreshCw } from 'lucide-react';
+import { GitBranch, Clock, Sliders, Shield, RefreshCw } from 'lucide-react';
 
 interface StatusbarProps {
   isScanning: boolean;
-  status: string;
-  compilerStatus?: string;
+  branchName?: string;
+  lastScanTime?: string;
+  activeProfile?: string;
+  activeAnalyzerCount?: number;
 }
 
 export const Statusbar: React.FC<StatusbarProps> = ({
   isScanning,
-  status,
-  compilerStatus = 'C++20 GCC 13 (Docker Enabled)',
+  branchName = 'main',
+  lastScanTime = 'Just now',
+  activeProfile = 'Default',
+  activeAnalyzerCount = 3,
 }) => {
   return (
     <footer
@@ -26,48 +30,62 @@ export const Statusbar: React.FC<StatusbarProps> = ({
         color: 'var(--sds-text-muted)',
         fontFamily: 'var(--sds-font-sans)',
         zIndex: 10,
+        userSelect: 'none',
       }}
     >
-      {/* Left side: Scan state */}
+      {/* 1. Current Branch */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-8)' }}>
-        <div
+        <GitBranch size={11} color="var(--sds-primary)" />
+        <span
           style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            backgroundColor: isScanning
-              ? 'var(--sds-primary)'
-              : status === 'error'
-                ? 'var(--sds-danger)'
-                : 'var(--sds-success)',
-            boxShadow: isScanning
-              ? '0 0 8px var(--sds-primary)'
-              : status === 'error'
-                ? '0 0 8px var(--sds-danger)'
-                : '0 0 8px var(--sds-success)',
+            fontWeight: 600,
+            color: 'var(--sds-text-heading)',
+            fontFamily: 'var(--sds-font-mono)',
           }}
-        />
-        <span style={{ textTransform: 'capitalize', fontWeight: 500 }}>
-          System:{' '}
-          {isScanning ? 'running scan' : status === 'error' ? 'errors detected' : 'idle / clean'}
+        >
+          {branchName}
         </span>
       </div>
 
-      {/* Center: Running background Tasks */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-4)' }}>
-        <RefreshCw
-          size={11}
-          style={{ animation: isScanning ? 'spin 2s linear infinite' : 'none' }}
-        />
-        <span>{isScanning ? '1 running analysis thread' : '0 active threads'}</span>
+      {/* 2. Last Scan Time */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-8)' }}>
+        <Clock size={11} />
+        <span>Last scan: {lastScanTime}</span>
       </div>
 
-      {/* Right side: Compiler status */}
+      {/* 3. Active Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-8)' }}>
-        <Terminal size={11} color="var(--sds-text-muted)" />
-        <span style={{ fontFamily: 'var(--sds-font-mono)' }}>{compilerStatus}</span>
-        <Shield size={11} color="var(--sds-success)" />
+        <Sliders size={11} />
+        <span>
+          Profile:{' '}
+          <span style={{ fontWeight: 500, color: 'var(--sds-text)' }}>{activeProfile}</span>
+        </span>
       </div>
+
+      {/* 4. Active Analyzer Count */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-8)' }}>
+        <Shield size={11} color="var(--sds-success)" />
+        <span>{activeAnalyzerCount} Analyzers Active</span>
+      </div>
+
+      {/* 5. Background Scan Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-8)' }}>
+        <RefreshCw
+          size={11}
+          style={{
+            animation: isScanning ? 'spin 2s linear infinite' : 'none',
+            color: isScanning ? 'var(--sds-primary)' : 'var(--sds-text-muted)',
+          }}
+        />
+        <span>Background Scan: {isScanning ? 'In Progress' : 'Ready'}</span>
+      </div>
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </footer>
   );
 };

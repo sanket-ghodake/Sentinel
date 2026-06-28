@@ -6,8 +6,11 @@ import { Inspector } from './components/Inspector';
 import { HealthCard } from './components/HealthCard';
 import { IssueCard } from './components/IssueCard';
 import { DiffViewer } from './components/DiffViewer';
+import { SearchModal } from './components/SearchModal';
+import { CommandPalette } from './components/CommandPalette';
 import { MockClient } from './services/mockClient';
 import { QtBridgeClient } from './services/qtBridgeClient';
+import type { InspectorObject } from './components/Inspector';
 import type {
   Project,
   Issue,
@@ -16,10 +19,28 @@ import type {
   ScanCompletedEvent,
   ClientApi,
 } from './services/clientApi';
-import { FileCode, Folder, ShieldCheck, Wrench, ToggleLeft, ToggleRight } from 'lucide-react';
+import {
+  FileCode,
+  Folder,
+  ShieldCheck,
+  Wrench,
+  ToggleLeft,
+  ToggleRight,
+  Search,
+} from 'lucide-react';
 
 const isQt = typeof window.qt !== 'undefined';
 const client: ClientApi = isQt ? new QtBridgeClient() : new MockClient();
+
+const workspaceTitles: { [key: string]: string } = {
+  home: 'Home Dashboard',
+  projects: 'Projects Explorer',
+  analyze: 'Issues Queue',
+  fix: 'Autofix Workspace',
+  insights: 'Quality Insights',
+  extensions: 'Extension Manager',
+  settings: 'Configuration Settings',
+};
 
 function App() {
   const [activeWorkspace, setActiveWorkspace] = useState('home');
@@ -28,12 +49,21 @@ function App() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
 
+  // Shell Layout and Dialog States
+  const [inspectorObject, setInspectorObject] = useState<InspectorObject | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [lastScanTime, setLastScanTime] = useState('Just now');
+
   // Scanning state
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
 
   // Filter for Analyze Workspace
   const [severityFilter, setSeverityFilter] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Load projects initially
   useEffect(() => {
@@ -42,6 +72,7 @@ function App() {
       setProjects(projs);
       if (projs.length > 0) {
         setActiveProjectId(projs[0].id);
+        setInspectorObject({ type: 'project', data: projs[0] });
       }
     }
     load();
@@ -55,15 +86,50 @@ function App() {
       setIssues(list);
       if (list.length > 0) {
         setSelectedIssueId(list[0].id);
+        setInspectorObject({ type: 'issue', data: list[0] });
       } else {
         setSelectedIssueId(null);
+        const activeProj = projects.find((p) => p.id === activeProjectId);
+        if (activeProj) {
+          setInspectorObject({ type: 'project', data: activeProj });
+        } else {
+          setInspectorObject(null);
+        }
       }
     }
     loadIssues();
   }, [activeProjectId]);
 
+  // Synchronize theme
+  useEffect(() => {
+    if (theme === 'light') {
+      document.documentElement.classList.add('light-theme');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+    }
+  }, [theme]);
+
+  // Elapsed scan time ticker
+  useEffect(() => {
+    let counter = 0;
+    setLastScanTime('Just now');
+    const timer = setInterval(() => {
+      counter += 5;
+      if (counter < 60) {
+        setLastScanTime(`${counter}s ago`);
+      } else {
+        setLastScanTime(`${Math.floor(counter / 60)}m ago`);
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isScanning]);
+
   const handleProjectChange = (id: string) => {
     setActiveProjectId(id);
+    const proj = projects.find((p) => p.id === id);
+    if (proj) {
+      setInspectorObject({ type: 'project', data: proj });
+    }
   };
 
   const handleRunScan = async () => {
@@ -86,11 +152,18 @@ function App() {
           setIsScanning(false);
           setScanProgress(100);
           // Refresh project data and issues list
-          client.GetProjects().then(setProjects);
+          client.GetProjects().then((updatedProjs) => {
+            setProjects(updatedProjs);
+            const activeProj = updatedProjs.find((p) => p.id === activeProjectId);
+            if (activeProj) {
+              setInspectorObject({ type: 'project', data: activeProj });
+            }
+          });
           client.GetIssues(activeProjectId).then((list) => {
             setIssues(list);
             if (list.length > 0 && !selectedIssueId) {
               setSelectedIssueId(list[list.length - 1].id);
+              setInspectorObject({ type: 'issue', data: list[list.length - 1] });
             }
           });
         }
@@ -107,12 +180,71 @@ function App() {
         setProjects(updatedProjs);
         const updatedIssues = await client.GetIssues(activeProjectId);
         setIssues(updatedIssues);
+        const currentIssue = updatedIssues.find((i) => i.id === issueId);
+        if (currentIssue) {
+          setInspectorObject({ type: 'issue', data: currentIssue });
+        }
       }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
     }
   };
+
+  const handleApplySafeFixes = async () => {
+    const autofixableIssues = issues.filter((i) => i.status === 'Open' && i.fix);
+    for (const issue of autofixableIssues) {
+      await handleApplyFix(issue.id);
+    }
+  };
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Keyboard Shortcuts Handler
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      // Ctrl+K -> Search Modal
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+      // Ctrl+Shift+P -> Command Palette
+      else if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'P') {
+        e.preventDefault();
+        setIsPaletteOpen((prev) => !prev);
+      }
+      // Ctrl+R -> Run Scan
+      else if (e.ctrlKey && e.key === 'r') {
+        e.preventDefault();
+        handleRunScan();
+      }
+      // Ctrl+F -> Search/Filter Focus
+      else if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        // Shift workspace to Analyze & focus filter query
+        setActiveWorkspace('analyze');
+        const filterInput = document.getElementById('local-search-input');
+        if (filterInput) {
+          filterInput.focus();
+        }
+      }
+      // Esc -> Close search, palette, or inspector
+      else if (e.key === 'Escape') {
+        if (isSearchOpen) {
+          setIsSearchOpen(false);
+        } else if (isPaletteOpen) {
+          setIsPaletteOpen(false);
+        } else {
+          setInspectorObject(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [activeProjectId, isSearchOpen, isPaletteOpen]);
 
   const activeProject = projects.find((p) => p.id === activeProjectId);
   const selectedIssue = issues.find((i) => i.id === selectedIssueId) || null;
@@ -183,6 +315,7 @@ function App() {
                           key={issue.id}
                           onClick={() => {
                             setSelectedIssueId(issue.id);
+                            setInspectorObject({ type: 'issue', data: issue });
                           }}
                           style={{
                             padding: 'var(--sds-space-12) var(--sds-space-16)',
@@ -252,7 +385,31 @@ function App() {
                   style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-16)' }}
                 >
                   <div
-                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}
+                    onClick={() =>
+                      setInspectorObject({
+                        type: 'recommendation',
+                        data: {
+                          title: 'Sanitize Database SQL Inputs',
+                          description:
+                            'C++ SQLite database queries must use parameterized placeholders binding variables instead of raw string concatenations to prevent security SQL injection risks.',
+                          category: 'Security Compliance',
+                          effort: '10 mins',
+                          target: 'core/database/',
+                        },
+                      })
+                    }
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)')
+                    }
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <span>Security Risk:</span>
                     <span
@@ -269,7 +426,31 @@ function App() {
                     </span>
                   </div>
                   <div
-                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}
+                    onClick={() =>
+                      setInspectorObject({
+                        type: 'recommendation',
+                        data: {
+                          title: 'Format Files with Clang-Format',
+                          description:
+                            'C++ format rules check failed on selected lines. Formatting linter recommends applying formatting correction to staged source code.',
+                          category: 'Style Conformance',
+                          effort: '5 mins',
+                          target: 'all/',
+                        },
+                      })
+                    }
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      borderRadius: '4px',
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.02)')
+                    }
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <span>Style Conformance:</span>
                     <span
@@ -332,7 +513,14 @@ function App() {
                     fontSize: '13px',
                     color: 'var(--sds-text-heading)',
                     fontWeight: 500,
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'folder',
+                      data: { name: 'core', path: 'core/', subdirsCount: 2, filesCount: 4 },
+                    })
+                  }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
                   <span>core/</span>
@@ -345,7 +533,19 @@ function App() {
                     fontSize: '13px',
                     color: 'var(--sds-text)',
                     marginLeft: '16px',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'folder',
+                      data: {
+                        name: 'event_bus',
+                        path: 'core/event_bus/',
+                        subdirsCount: 0,
+                        filesCount: 2,
+                      },
+                    })
+                  }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
                   <span>event_bus/</span>
@@ -358,7 +558,19 @@ function App() {
                     fontSize: '13px',
                     color: 'var(--sds-text)',
                     marginLeft: '16px',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'folder',
+                      data: {
+                        name: 'fake_data',
+                        path: 'core/fake_data/',
+                        subdirsCount: 0,
+                        filesCount: 2,
+                      },
+                    })
+                  }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
                   <span>fake_data/</span>
@@ -372,7 +584,19 @@ function App() {
                     color: 'var(--sds-text)',
                     marginLeft: '32px',
                     fontFamily: 'var(--sds-font-mono)',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'file',
+                      data: {
+                        name: 'FakeClientApi.cpp',
+                        path: 'core/fake_data/FakeClientApi.cpp',
+                        issuesCount: 1,
+                        loc: 145,
+                      },
+                    })
+                  }
                 >
                   <FileCode size={12} color="var(--sds-text-muted)" />
                   <span>FakeClientApi.cpp</span>
@@ -386,7 +610,14 @@ function App() {
                     color: 'var(--sds-text-heading)',
                     fontWeight: 500,
                     marginTop: '4px',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'folder',
+                      data: { name: 'apps', path: 'apps/', subdirsCount: 1, filesCount: 1 },
+                    })
+                  }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
                   <span>apps/</span>
@@ -399,7 +630,19 @@ function App() {
                     fontSize: '13px',
                     color: 'var(--sds-text)',
                     marginLeft: '16px',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'folder',
+                      data: {
+                        name: 'desktop',
+                        path: 'apps/desktop/',
+                        subdirsCount: 1,
+                        filesCount: 3,
+                      },
+                    })
+                  }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
                   <span>desktop/</span>
@@ -412,7 +655,19 @@ function App() {
                     fontSize: '13px',
                     color: 'var(--sds-text)',
                     marginLeft: '32px',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'folder',
+                      data: {
+                        name: 'frontend',
+                        path: 'apps/desktop/frontend/',
+                        subdirsCount: 2,
+                        filesCount: 8,
+                      },
+                    })
+                  }
                 >
                   <Folder size={14} color="var(--sds-primary)" />
                   <span>frontend/</span>
@@ -426,7 +681,19 @@ function App() {
                     color: 'var(--sds-text)',
                     marginLeft: '48px',
                     fontFamily: 'var(--sds-font-mono)',
+                    cursor: 'pointer',
                   }}
+                  onClick={() =>
+                    setInspectorObject({
+                      type: 'file',
+                      data: {
+                        name: 'App.tsx',
+                        path: 'apps/desktop/frontend/src/App.tsx',
+                        issuesCount: 0,
+                        loc: 1143,
+                      },
+                    })
+                  }
                 >
                   <FileCode size={12} color="var(--sds-primary)" />
                   <span>App.tsx</span>
@@ -574,10 +841,16 @@ function App() {
         );
 
       case 'analyze': {
-        // Filter issues based on active filter
+        // Filter issues based on active filter and local search query
         const filteredIssues = issues.filter((i) => {
-          if (severityFilter === 'ALL') return true;
-          return i.severity.toUpperCase() === severityFilter;
+          const matchesSeverity =
+            severityFilter === 'ALL' || i.severity.toUpperCase() === severityFilter;
+          const matchesSearch =
+            searchQuery === '' ||
+            i.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            i.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            i.location.fileId.toLowerCase().includes(searchQuery.toLowerCase());
+          return matchesSeverity && matchesSearch;
         });
 
         return (
@@ -599,44 +872,77 @@ function App() {
                 overflowY: 'auto',
               }}
             >
-              <div
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-              >
-                <h3>Issues Queue ({filteredIssues.length})</h3>
-                {/* Severity Filter pills */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div
-                  style={{
-                    display: 'flex',
-                    gap: '4px',
-                    backgroundColor: 'rgba(0,0,0,0.2)',
-                    padding: '3px',
-                    borderRadius: 'var(--sds-radius-md)',
-                    border: '1px solid var(--sds-border)',
-                  }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                 >
-                  {['ALL', 'CRITICAL', 'MEDIUM', 'LOW'].map((sev) => (
-                    <button
-                      key={sev}
-                      onClick={() => setSeverityFilter(sev)}
-                      style={{
-                        padding: '4px 8px',
-                        border: 'none',
-                        borderRadius: 'var(--sds-radius-sm)',
-                        fontSize: '11px',
-                        fontWeight: 500,
-                        backgroundColor:
-                          severityFilter === sev ? 'var(--sds-surface-active)' : 'transparent',
-                        color:
-                          severityFilter === sev
-                            ? 'var(--sds-text-heading)'
-                            : 'var(--sds-text-muted)',
-                        cursor: 'pointer',
-                        transition: 'all var(--sds-transition-fast)',
-                      }}
-                    >
-                      {sev}
-                    </button>
-                  ))}
+                  <h3>Issues Queue ({filteredIssues.length})</h3>
+                  {/* Severity Filter pills */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '4px',
+                      backgroundColor: 'rgba(0,0,0,0.2)',
+                      padding: '3px',
+                      borderRadius: 'var(--sds-radius-md)',
+                      border: '1px solid var(--sds-border)',
+                    }}
+                  >
+                    {['ALL', 'CRITICAL', 'MEDIUM', 'LOW'].map((sev) => (
+                      <button
+                        key={sev}
+                        onClick={() => setSeverityFilter(sev)}
+                        style={{
+                          padding: '4px 8px',
+                          border: 'none',
+                          borderRadius: 'var(--sds-radius-sm)',
+                          fontSize: '11px',
+                          fontWeight: 500,
+                          backgroundColor:
+                            severityFilter === sev ? 'var(--sds-surface-active)' : 'transparent',
+                          color:
+                            severityFilter === sev
+                              ? 'var(--sds-text-heading)'
+                              : 'var(--sds-text-muted)',
+                          cursor: 'pointer',
+                          transition: 'all var(--sds-transition-fast)',
+                        }}
+                      >
+                        {sev}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Local search input for Ctrl+F */}
+                <div style={{ position: 'relative' }}>
+                  <Search
+                    size={14}
+                    color="var(--sds-text-muted)"
+                    style={{
+                      position: 'absolute',
+                      left: '10px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                    }}
+                  />
+                  <input
+                    id="local-search-input"
+                    type="text"
+                    placeholder="Filter issues in workspace (Ctrl+F)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(0, 0, 0, 0.15)',
+                      border: '1px solid var(--sds-border)',
+                      borderRadius: 'var(--sds-radius-md)',
+                      padding: '6px 12px 6px 30px',
+                      fontSize: '12px',
+                      color: 'var(--sds-text-heading)',
+                      outline: 'none',
+                    }}
+                  />
                 </div>
               </div>
 
@@ -648,6 +954,7 @@ function App() {
                     isSelected={selectedIssueId === issue.id}
                     onSelect={() => {
                       setSelectedIssueId(issue.id);
+                      setInspectorObject({ type: 'issue', data: issue });
                     }}
                     onApplyFix={handleApplyFix}
                     isApplying={false}
@@ -962,7 +1269,25 @@ function App() {
               {/* Plugin 1: Cppcheck */}
               <div
                 className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                onClick={() =>
+                  setInspectorObject({
+                    type: 'plugin',
+                    data: {
+                      name: 'cppcheck',
+                      version: '2.13',
+                      description:
+                        'Static analysis tool for C/C++ code. Detects bugs, memory leaks, and undefined behavior.',
+                      status: 'Active',
+                      category: 'Static Analyzer',
+                    },
+                  })
+                }
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--sds-space-12)',
+                  cursor: 'pointer',
+                }}
               >
                 <div
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -989,7 +1314,25 @@ function App() {
               {/* Plugin 2: Clang-Tidy */}
               <div
                 className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                onClick={() =>
+                  setInspectorObject({
+                    type: 'plugin',
+                    data: {
+                      name: 'clang-tidy',
+                      version: '17.0',
+                      description:
+                        'LLVM-based C++ linter tool providing diagnosis and automated corrections for style, performance, and API misuse.',
+                      status: 'Active',
+                      category: 'LLVM Compiler Linter',
+                    },
+                  })
+                }
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--sds-space-12)',
+                  cursor: 'pointer',
+                }}
               >
                 <div
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -1016,7 +1359,25 @@ function App() {
               {/* Plugin 3: ESLint */}
               <div
                 className="sds-card"
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sds-space-12)' }}
+                onClick={() =>
+                  setInspectorObject({
+                    type: 'plugin',
+                    data: {
+                      name: 'eslint-plugin',
+                      version: '8.56',
+                      description:
+                        'Pluggable JavaScript/TypeScript linter finding patterns and bugs in Node/React codebases.',
+                      status: 'Active',
+                      category: 'JS/TS Linter',
+                    },
+                  })
+                }
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--sds-space-12)',
+                  cursor: 'pointer',
+                }}
               >
                 <div
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
@@ -1119,22 +1480,63 @@ function App() {
         onRunScan={handleRunScan}
         isScanning={isScanning}
         scanProgress={scanProgress}
+        activeWorkspaceTitle={workspaceTitles[activeWorkspace] || activeWorkspace}
+        onSearchClick={() => setIsSearchOpen(true)}
+        onProfileClick={() => setInspectorObject({ type: 'profile', data: {} })}
       />
 
       {/* Main Grid: Navigation (left) - Workspace (center) - Inspector (right) */}
       <div className="sds-main-grid">
-        <Sidebar activeItem={activeWorkspace} onItemSelect={setActiveWorkspace} />
+        <Sidebar
+          activeItem={activeWorkspace}
+          onItemSelect={setActiveWorkspace}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((c) => !c)}
+          openIssuesCount={issues.filter((i) => i.status === 'Open').length}
+          autofixesCount={issues.filter((i) => i.status === 'Open' && i.fix).length}
+        />
         <main className="sds-workspace">{renderWorkspaceContent()}</main>
         <Inspector
-          selectedIssue={selectedIssue}
+          inspectorObject={inspectorObject}
           onApplyFix={handleApplyFix}
           isApplying={false}
           onNavigateToFix={() => setActiveWorkspace('fix')}
+          onClose={() => setInspectorObject(null)}
         />
       </div>
 
       {/* Bottom Status Indicator Bar */}
-      <Statusbar isScanning={isScanning} status={activeProject?.status || 'idle'} />
+      <Statusbar
+        isScanning={isScanning}
+        branchName={activeProject?.branch || 'main'}
+        lastScanTime={lastScanTime}
+        activeProfile="Default"
+        activeAnalyzerCount={activeProject?.plugins?.length || 3}
+      />
+
+      {/* Global Modals (Ctrl+K and Ctrl+Shift+P) */}
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        projects={projects}
+        issues={issues}
+        onSelectProject={handleProjectChange}
+        onSelectIssue={(id) => {
+          setSelectedIssueId(id);
+          const iss = issues.find((i) => i.id === id);
+          if (iss) setInspectorObject({ type: 'issue', data: iss });
+        }}
+        onNavigateToWorkspace={setActiveWorkspace}
+      />
+
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        onRunFullScan={handleRunScan}
+        onApplySafeFixes={handleApplySafeFixes}
+        onToggleTheme={handleToggleTheme}
+        onNavigateToWorkspace={setActiveWorkspace}
+      />
     </div>
   );
 }

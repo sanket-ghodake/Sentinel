@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Loader2, Bell, Search, Layers } from 'lucide-react';
+import { Play, Loader2, Bell, Search, Shield, User } from 'lucide-react';
 import type { Project } from '../services/clientApi';
 
 interface TopbarProps {
@@ -9,6 +9,9 @@ interface TopbarProps {
   onRunScan: () => void;
   isScanning: boolean;
   scanProgress: number;
+  activeWorkspaceTitle: string;
+  onSearchClick: () => void;
+  onProfileClick: () => void;
 }
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -18,13 +21,14 @@ export const Topbar: React.FC<TopbarProps> = ({
   onRunScan,
   isScanning,
   scanProgress,
+  activeWorkspaceTitle,
+  onSearchClick,
+  onProfileClick,
 }) => {
-  const activeProject = projects.find((p) => p.id === activeProjectId);
-
   return (
     <header
       style={{
-        height: '56px',
+        height: '64px',
         backgroundColor: 'var(--sds-surface)',
         borderBottom: '1px solid var(--sds-border)',
         display: 'flex',
@@ -34,9 +38,57 @@ export const Topbar: React.FC<TopbarProps> = ({
         zIndex: 10,
       }}
     >
-      {/* Project Switcher */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-12)' }}>
-        <Layers size={16} color="var(--sds-text-muted)" />
+      {/* Left Section: Logo & Workspace Title */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-24)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-12)' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(99, 102, 241, 0.15)',
+              padding: '6px',
+              borderRadius: 'var(--sds-radius-md)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+            }}
+          >
+            <Shield size={20} color="var(--sds-primary)" />
+          </div>
+          <span
+            style={{
+              fontFamily: 'var(--sds-font-sans)',
+              fontSize: '16px',
+              fontWeight: 700,
+              color: 'var(--sds-text-heading)',
+              letterSpacing: '0.75px',
+            }}
+          >
+            SENTINEL
+          </span>
+        </div>
+
+        {/* Separator line */}
+        <div style={{ width: '1px', height: '20px', backgroundColor: 'var(--sds-border)' }} />
+
+        {/* Current Workspace Title */}
+        <span
+          style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            color: 'var(--sds-text-heading)',
+            backgroundColor: 'rgba(255, 255, 255, 0.03)',
+            padding: '4px 12px',
+            borderRadius: 'var(--sds-radius-md)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+          }}
+        >
+          {activeWorkspaceTitle}
+        </span>
+      </div>
+
+      {/* Middle Section: Project Switcher & Search */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-16)' }}>
+        {/* Project Switcher */}
         <div style={{ position: 'relative' }}>
           <select
             value={activeProjectId}
@@ -59,11 +111,10 @@ export const Topbar: React.FC<TopbarProps> = ({
           >
             {projects.map((proj) => (
               <option key={proj.id} value={proj.id}>
-                {proj.name} ({proj.language})
+                {proj.name}
               </option>
             ))}
           </select>
-          {/* Custom chevron dropdown arrow */}
           <div
             style={{
               position: 'absolute',
@@ -77,61 +128,51 @@ export const Topbar: React.FC<TopbarProps> = ({
             }}
           />
         </div>
-        {activeProject && (
-          <span
+
+        {/* Global Search box */}
+        <div
+          onClick={onSearchClick}
+          style={{
+            position: 'relative',
+            width: '260px',
+            cursor: 'pointer',
+          }}
+        >
+          <Search
+            size={14}
+            color="var(--sds-text-muted)"
             style={{
-              fontSize: '11px',
-              color: 'var(--sds-text-muted)',
-              fontFamily: 'var(--sds-font-mono)',
-              backgroundColor: 'rgba(0, 0, 0, 0.2)',
-              padding: '2px 8px',
-              borderRadius: 'var(--sds-radius-sm)',
-              border: '1px solid var(--sds-border)',
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
             }}
-          >
-            {activeProject.branch}
-          </span>
-        )}
+          />
+          <input
+            type="text"
+            placeholder="Search (Ctrl+K)..."
+            readOnly
+            style={{
+              width: '100%',
+              backgroundColor: 'var(--sds-bg)',
+              border: '1px solid var(--sds-border)',
+              borderRadius: 'var(--sds-radius-md)',
+              padding: '6px 12px 6px 32px',
+              fontFamily: 'var(--sds-font-sans)',
+              fontSize: '13px',
+              color: 'var(--sds-text-heading)',
+              outline: 'none',
+              cursor: 'pointer',
+              caretColor: 'transparent',
+              transition: 'all var(--sds-transition-fast)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--sds-border-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--sds-border)')}
+          />
+        </div>
       </div>
 
-      {/* Center Search Bar */}
-      <div
-        style={{
-          position: 'relative',
-          width: '320px',
-        }}
-      >
-        <Search
-          size={14}
-          color="var(--sds-text-muted)"
-          style={{
-            position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-          }}
-        />
-        <input
-          type="text"
-          placeholder="Search files, rules, or issues (Ctrl+K)..."
-          style={{
-            width: '100%',
-            backgroundColor: 'var(--sds-bg)',
-            border: '1px solid var(--sds-border)',
-            borderRadius: 'var(--sds-radius-md)',
-            padding: '6px 12px 6px 32px',
-            fontFamily: 'var(--sds-font-sans)',
-            fontSize: '13px',
-            color: 'var(--sds-text-heading)',
-            outline: 'none',
-            transition: 'all var(--sds-transition-fast)',
-          }}
-          onFocus={(e) => (e.target.style.borderColor = 'var(--sds-primary)')}
-          onBlur={(e) => (e.target.style.borderColor = 'var(--sds-border)')}
-        />
-      </div>
-
-      {/* Right Side Controls */}
+      {/* Right Section: Scan, Notifications, User Profile */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sds-space-16)' }}>
         {/* Progress Display */}
         {isScanning && (
@@ -149,7 +190,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               className="sds-spin"
               style={{ animation: 'spin 1s linear infinite' }}
             />
-            <span>Scanning... {scanProgress}%</span>
+            <span>Scanning {scanProgress}%</span>
             <div
               style={{
                 width: '60px',
@@ -213,7 +254,6 @@ export const Topbar: React.FC<TopbarProps> = ({
           onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--sds-text)')}
         >
           <Bell size={18} />
-          {/* Unread badge dot */}
           <div
             style={{
               position: 'absolute',
@@ -225,6 +265,34 @@ export const Topbar: React.FC<TopbarProps> = ({
               borderRadius: '50%',
             }}
           />
+        </button>
+
+        {/* User / Profile menu */}
+        <button
+          onClick={onProfileClick}
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            backgroundColor: 'var(--sds-surface-hover)',
+            border: '1px solid var(--sds-border)',
+            color: 'var(--sds-text-heading)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all var(--sds-transition-fast)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--sds-primary)';
+            e.currentTarget.style.backgroundColor = 'var(--sds-surface-active)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--sds-border)';
+            e.currentTarget.style.backgroundColor = 'var(--sds-surface-hover)';
+          }}
+        >
+          <User size={16} />
         </button>
       </div>
 

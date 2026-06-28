@@ -179,7 +179,7 @@ code {
 /* App layout structures */
 .sds-shell {
   display: grid;
-  grid-template-rows: 56px 1fr 28px;
+  grid-template-rows: 64px 1fr 28px;
   height: 100vh;
   width: 100vw;
   background-color: var(--sds-bg);
@@ -187,7 +187,7 @@ code {
 
 .sds-main-grid {
   display: grid;
-  grid-template-columns: 240px 1fr 320px;
+  grid-template-columns: auto 1fr 360px;
   height: 100%;
   overflow: hidden;
 }
