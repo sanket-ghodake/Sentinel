@@ -1,0 +1,91 @@
+{
+  "theme": "dark",
+  "colors": {
+    "neutral": {
+      "bg": {
+        "value": "#0b0c10",
+        "description": "Core application background color"
+      },
+      "surface": {
+        "value": "#12141c",
+        "description": "Card, panel, and container surface background"
+      },
+      "surfaceHover": {
+        "value": "#1b1e2a",
+        "description": "Hover state highlight color for interactive surfaces"
+      },
+      "surfaceActive": {
+        "value": "#222635",
+        "description": "Active/selected state color for interactive items"
+      },
+      "border": {
+        "value": "#1f2433",
+        "description": "Subdued grid lines and component borders"
+      },
+      "borderHover": {
+        "value": "#2e354a",
+        "description": "Highlighted borders on hover"
+      },
+      "text": {
+        "value": "#94a3b8",
+        "description": "Standard body text color"
+      },
+      "textHeading": {
+        "value": "#f8fafc",
+        "description": "High-contrast heading and title text color"
+      },
+      "textMuted": {
+        "value": "#64748b",
+        "description": "Low-contrast metadata and helper text color"
+      }
+    },
+    "brand": {
+      "primary": {
+        "value": "#6366f1",
+        "description": "Indigo primary brand accent color"
+      },
+      "primaryHover": {
+        "value": "#4f46e5",
+        "description": "Indigo brand color for hover states"
+      },
+      "secondary": {
+        "value": "#475569",
+        "description": "Subdued secondary button and structural accents"
+      }
+    },
+    "semantic": {
+      "success": {
+        "value": "#10b981",
+        "description": "Emerald Green for safe fixes, passing checks, and high quality scores"
+      },
+      "successBg": {
+        "value": "rgba(16, 185, 129, 0.1)",
+        "description": "Subdued green overlay fill"
+      },
+      "warning": {
+        "value": "#f59e0b",
+        "description": "Amber Orange for warnings, suggestions, and moderate severities"
+      },
+      "warningBg": {
+        "value": "rgba(245, 158, 11, 0.1)",
+        "description": "Subdued orange overlay fill"
+      },
+      "danger": {
+        "value": "#ef4444",
+        "description": "Rose Red for blockers, compilation errors, and low quality scores"
+      },
+      "dangerBg": {
+        "value": "rgba(239, 68, 68, 0.1)",
+        "description": "Subdued red overlay fill"
+      },
+      "info": {
+        "value": "#0ea5e9",
+        "description": "Cyber Blue for configuration details, tips, and guidelines"
+      },
+      "infoBg": {
+        "value": "rgba(14, 165, 233, 0.1)",
+        "description": "Subdued blue overlay fill"
+      }
+    }
+  }
+}

@@ -28,7 +28,7 @@ const workspaceTitles: { [key: string]: string } = {
   home: 'Home Dashboard',
   projects: 'Projects Explorer',
   analyze: 'Issues Queue',
-  fix: 'Autofix Workspace',
+  improve: 'Improvement Workspace',
   insights: 'Quality Insights',
   extensions: 'Extension Manager',
   settings: 'Configuration Settings',
@@ -768,9 +768,9 @@ function App() {
                     }}
                     onApplyFix={handleApplyFix}
                     isApplying={false}
-                    onNavigateToFix={() => {
+                    onNavigateToImprove={() => {
                       setSelectedIssueId(issue.id);
-                      setActiveWorkspace('fix');
+                      setActiveWorkspace('improve');
                     }}
                   />
                 ))}
@@ -861,16 +861,16 @@ function App() {
         );
       }
 
-      case 'fix':
+      case 'improve':
         if (!selectedIssue || !selectedIssue.fix) {
           return (
             <div
               className="sds-card"
               style={{ textAlign: 'center', padding: 'var(--sds-space-64)' }}
             >
-              <h3>No autofix selected</h3>
+              <h3>No improvement selected</h3>
               <p style={{ color: 'var(--sds-text-muted)', marginTop: 'var(--sds-space-8)' }}>
-                Select an issue with an available autofix in the Analyze page first.
+                Select an issue with an available improvement in the Analyze page first.
               </p>
               <button
                 onClick={() => setActiveWorkspace('analyze')}
@@ -893,7 +893,7 @@ function App() {
             }}
           >
             <div>
-              <h3>Autofix Workspace</h3>
+              <h3>Improvement Workspace</h3>
               <p style={{ fontSize: '13px', color: 'var(--sds-text-muted)' }}>
                 Verify and apply automated diff changes to files under the Docker container
                 workspace.
@@ -1310,7 +1310,7 @@ function App() {
           inspectorObject={inspectorObject}
           onApplyFix={handleApplyFix}
           isApplying={false}
-          onNavigateToFix={() => setActiveWorkspace('fix')}
+          onNavigateToImprove={() => setActiveWorkspace('improve')}
           onClose={() => setInspectorObject(null)}
         />
       </div>

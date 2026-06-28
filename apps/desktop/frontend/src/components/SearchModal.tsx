@@ -67,12 +67,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       },
     },
     {
-      id: 'cmd-fix',
-      title: 'Navigate to Autofix Workspace',
+      id: 'cmd-improve',
+      title: 'Navigate to Improvement Workspace',
       category: 'Commands',
-      subtitle: 'Apply safe static analysis fixes',
+      subtitle: 'Apply safe static analysis improvements',
       action: () => {
-        onNavigateToWorkspace('fix');
+        onNavigateToWorkspace('improve');
         onClose();
       },
     },

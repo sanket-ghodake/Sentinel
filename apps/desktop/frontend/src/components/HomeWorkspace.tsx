@@ -330,7 +330,7 @@ export const HomeWorkspace: React.FC<HomeWorkspaceProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveWorkspace('fix');
+                      setActiveWorkspace('improve');
                     }}
                     className="sds-btn sds-btn-primary"
                     style={{

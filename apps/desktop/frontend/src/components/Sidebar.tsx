@@ -38,8 +38,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: openIssuesCount > 0 ? openIssuesCount : undefined,
     },
     {
-      id: 'fix',
-      label: 'Fix',
+      id: 'improve',
+      label: 'Improve',
       icon: Wrench,
       badge: autofixesCount > 0 ? autofixesCount : undefined,
     },

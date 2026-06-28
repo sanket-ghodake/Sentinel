@@ -1,0 +1,56 @@
+{
+  "fonts": {
+    "sans": {
+      "value": "'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+      "description": "Primary sans-serif font for UI and body text"
+    },
+    "mono": {
+      "value": "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+      "description": "Monospace font for code viewer, diff displays, and metadata tags"
+    }
+  },
+  "sizes": {
+    "display": {
+      "fontSize": "32px",
+      "fontWeight": "700",
+      "lineHeight": "1.25",
+      "description": "Large visual hero headers"
+    },
+    "h1": {
+      "fontSize": "24px",
+      "fontWeight": "600",
+      "lineHeight": "1.3",
+      "description": "Main page title headers"
+    },
+    "h2": {
+      "fontSize": "20px",
+      "fontWeight": "500",
+      "lineHeight": "1.35",
+      "description": "Section-level title headers"
+    },
+    "h3": {
+      "fontSize": "16px",
+      "fontWeight": "500",
+      "lineHeight": "1.4",
+      "description": "Sub-section and card titles"
+    },
+    "body": {
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": "1.5",
+      "description": "General text, descriptions, and list contents"
+    },
+    "caption": {
+      "fontSize": "12px",
+      "fontWeight": "400",
+      "lineHeight": "1.4",
+      "description": "Subdued metadata, time stamps, and auxiliary labels"
+    },
+    "code": {
+      "fontSize": "13px",
+      "fontWeight": "400",
+      "lineHeight": "1.6",
+      "description": "Embedded code blocks and inline code highlights"
+    }
+  }
+}

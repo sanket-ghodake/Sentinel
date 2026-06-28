@@ -73,7 +73,7 @@ interface InspectorProps {
   inspectorObject: InspectorObject | null;
   onApplyFix: (issueId: string) => void;
   isApplying: boolean;
-  onNavigateToFix: () => void;
+  onNavigateToImprove: () => void;
   onClose: () => void;
 }
 
@@ -81,7 +81,7 @@ export const Inspector: React.FC<InspectorProps> = ({
   inspectorObject,
   onApplyFix,
   isApplying,
-  onNavigateToFix,
+  onNavigateToImprove,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'properties' | 'actions'>('summary');
@@ -384,7 +384,7 @@ export const Inspector: React.FC<InspectorProps> = ({
             {issue.fix && issue.status === 'Open' ? (
               <>
                 <button
-                  onClick={onNavigateToFix}
+                  onClick={onNavigateToImprove}
                   className="sds-btn sds-btn-secondary"
                   style={{ width: '100%' }}
                 >

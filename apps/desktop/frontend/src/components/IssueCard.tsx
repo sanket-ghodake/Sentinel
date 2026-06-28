@@ -8,7 +8,7 @@ interface IssueCardProps {
   onSelect: () => void;
   onApplyFix: (issueId: string) => void;
   isApplying: boolean;
-  onNavigateToFix: () => void;
+  onNavigateToImprove: () => void;
 }
 
 export const IssueCard: React.FC<IssueCardProps> = ({
@@ -17,7 +17,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
   onSelect,
   onApplyFix,
   isApplying,
-  onNavigateToFix,
+  onNavigateToImprove,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -176,7 +176,7 @@ export const IssueCard: React.FC<IssueCardProps> = ({
               </p>
               <div style={{ display: 'flex', gap: 'var(--sds-space-12)', marginTop: '4px' }}>
                 <button
-                  onClick={onNavigateToFix}
+                  onClick={onNavigateToImprove}
                   className="sds-btn sds-btn-secondary"
                   style={{ fontSize: '12px', padding: '6px 12px' }}
                 >

@@ -1,0 +1,36 @@
+{
+  "spacing": {
+    "space-4": {
+      "value": "4px",
+      "description": "Fine gaps (e.g., icon-to-text spacing, small status chips padding)"
+    },
+    "space-8": {
+      "value": "8px",
+      "description": "Micro padding and item gaps (e.g., list item padding, badge overlays)"
+    },
+    "space-12": {
+      "value": "12px",
+      "description": "Compact padding and gaps (e.g., action buttons padding, timeline entries)"
+    },
+    "space-16": {
+      "value": "16px",
+      "description": "Standard layout padding / gutter (e.g., smaller card padding, toolbar side padding)"
+    },
+    "space-24": {
+      "value": "24px",
+      "description": "Large card padding and structural margins (e.g., standard project card padding)"
+    },
+    "space-32": {
+      "value": "32px",
+      "description": "Workspace gutters (e.g., main margins surrounding layouts)"
+    },
+    "space-48": {
+      "value": "48px",
+      "description": "Section headers split, significant vertical spacers"
+    },
+    "space-64": {
+      "value": "64px",
+      "description": "Global toolbar height, high-level structural bands"
+    }
+  }
+}
